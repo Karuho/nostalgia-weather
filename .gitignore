@@ -1,0 +1,9 @@
+*.swp
+*.tmp
+*~
+.DS_Store
+.vscode/
+.idea/
+build/
+
+.local-backups/

@@ -1,0 +1,23 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DynaDev"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "A Windows 7 inspired weather widget for KDE Plasma 6",
+        "EnabledByDefault": false,
+        "Icon": "weather-clear",
+        "Id": "io.github.karuho.nostalgiaweather",
+        "License": "MIT",
+        "Name": "Nostalgia Weather",
+        "Version": "0.2.6",
+        "Website": "https://github.com/Karuho",
+        "Copyright": "2026 DynaDev"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-NotificationArea": "true",
+    "X-Plasma-NotificationAreaCategory": "SystemServices",
+    "KPackageStructure": "Plasma/Applet"
+}

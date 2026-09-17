@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg
+    xmlns="http://www.kde.org/standards/kcfg/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                        http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+
+    <kcfgfile name=""/>
+
+    <group name="General">
+
+        <entry name="locationName" type="String">
+            <default>Rengo, Chile</default>
+        </entry>
+
+        <entry name="latitude" type="String">
+            <default>-34.406387</default>
+        </entry>
+
+        <entry name="longitude" type="String">
+            <default>-70.858341</default>
+        </entry>
+
+        <entry name="timezone" type="String">
+            <default>America/Santiago</default>
+        </entry>
+
+        <entry name="language" type="String">
+            <default>en</default>
+        </entry>
+
+        <entry name="temperatureUnit" type="String">
+            <default>celsius</default>
+        </entry>
+
+        <entry name="updateMinutes" type="Int">
+            <default>30</default>
+        </entry>
+
+        <entry name="forecastDays" type="Int">
+            <default>7</default>
+        </entry>
+
+        <entry name="showDate" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showFeelsLike" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showPrecipitation" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showUv" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showSun" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showAirQuality" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showDust" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showMoon" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showDailyPrecip" type="Bool">
+            <default>true</default>
+        </entry>
+
+    </group>
+</kcfg>
