@@ -728,6 +728,26 @@ PlasmoidItem {
                 adaptiveCapacity
             )
 
+        readonly property bool extendedForecast:
+            visibleDays > 7
+
+        readonly property int forecastColumns:
+            visibleDays <= 7
+            ? Math.max(1, visibleDays)
+            : (
+                visibleDays <= 10
+                ? 5
+                : 8
+            )
+
+        readonly property int forecastRows:
+            visibleDays > 0
+            ? Math.ceil(
+                  visibleDays
+                  / forecastColumns
+              )
+            : 0
+
         readonly property bool showDetails:
             height >= 260
 
@@ -1357,7 +1377,9 @@ PlasmoidItem {
             }
 
             Item {
-                Layout.fillHeight: true
+                Layout.fillHeight:
+                    !card.extendedForecast
+
                 Layout.minimumHeight: 0
             }
 
@@ -1367,23 +1389,40 @@ PlasmoidItem {
                 color: "#45ffffff"
             }
 
-            RowLayout {
-                id: forecastRow
+            GridLayout {
+                id: forecastGrid
 
                 Layout.fillWidth: true
-                Layout.fillHeight: false
+
+                Layout.fillHeight:
+                    card.extendedForecast
 
                 Layout.preferredHeight:
-                    card.height >= 320
-                    ? 88
-                    : 72
+                    card.extendedForecast
+                    ? 170
+                    : (
+                        card.height >= 320
+                        ? 88
+                        : 72
+                    )
 
                 Layout.minimumHeight:
-                    card.height >= 320
-                    ? 88
-                    : 72
+                    card.extendedForecast
+                    ? 164
+                    : (
+                        card.height >= 320
+                        ? 88
+                        : 72
+                    )
 
-                spacing: 2
+                columns:
+                    card.forecastColumns
+
+                columnSpacing: 2
+                rowSpacing:
+                    card.extendedForecast
+                    ? 8
+                    : 2
 
                 Repeater {
                     model:
