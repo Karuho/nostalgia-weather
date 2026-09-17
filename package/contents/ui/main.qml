@@ -217,6 +217,32 @@ PlasmoidItem {
         )
     }
 
+    function forecastDayName(dateString, index) {
+        if (index === 0)
+            return tx("Today", "Hoy")
+
+        return dayName(dateString)
+    }
+
+    function shortDate(dateString) {
+        var date = new Date(dateString + "T12:00:00")
+
+        var day = date.getDate()
+        var month = date.getMonth() + 1
+
+        if (
+            uiLanguage === "en"
+            || uiLanguage === "ja"
+            || uiLanguage === "zh-CN"
+            || uiLanguage === "zh-TW"
+            || uiLanguage === "ko"
+        ) {
+            return month + "/" + day
+        }
+
+        return day + "/" + month
+    }
+
     function longDate(dateString) {
         var date = new Date(dateString + "T12:00:00")
 
@@ -1453,8 +1479,9 @@ PlasmoidItem {
                                     Qt.AlignHCenter
 
                                 text:
-                                    root.dayName(
-                                        day.date
+                                    root.forecastDayName(
+                                        day.date,
+                                        index
                                     )
 
                                 color: "#efffffff"
@@ -1468,6 +1495,27 @@ PlasmoidItem {
                                         Math.min(
                                             13,
                                             card.width / 36
+                                        )
+                                    )
+                            }
+
+                            PlasmaComponents.Label {
+                                Layout.alignment:
+                                    Qt.AlignHCenter
+
+                                text:
+                                    root.shortDate(
+                                        day.date
+                                    )
+
+                                color: "#bfffffff"
+
+                                font.pixelSize:
+                                    Math.max(
+                                        8,
+                                        Math.min(
+                                            10,
+                                            card.width / 44
                                         )
                                     )
                             }
