@@ -13,8 +13,9 @@
         "License": "MIT",
         "Name": "Nostalgia Weather",
         "Version": "0.2.6",
-        "Website": "https://github.com/Karuho",
-        "Copyright": "2026 DynaDev"
+        "Website": "https://github.com/Karuho/nostalgia-weather",
+        "Copyright": "2026 DynaDev",
+        "BugReportUrl": "https://github.com/Karuho/nostalgia-weather/issues"
     },
     "X-Plasma-API-Minimum-Version": "6.0",
     "X-Plasma-NotificationArea": "true",
