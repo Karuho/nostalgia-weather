@@ -60,3 +60,14 @@ Early development.
 ## License
 
 MIT
+
+## Data providers
+
+Weather and forecast data are provided by Open-Meteo.
+
+Location search uses the Open-Meteo Geocoding API.
+
+Current-location reverse geocoding is provided by Photon using
+OpenStreetMap data.
+
+OpenStreetMap data is © OpenStreetMap contributors.

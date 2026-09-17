@@ -106,6 +106,9 @@ Item {
     property bool searching: false
     property bool resultsVisible: false
 
+    property bool locatingCurrent: false
+    property string currentLocationMessage: ""
+
     property string searchError: ""
 
     /*
@@ -179,6 +182,306 @@ Item {
 
         ++searchSerial
     }
+
+    function locationFailure(reason) {
+        locatingCurrent = false
+
+        if (reason === "access") {
+            currentLocationMessage =
+                tx(
+                    "Location access was denied.",
+                    "Se denegó el acceso a la ubicación."
+                )
+            return
+        }
+
+        if (reason === "timeout") {
+            currentLocationMessage =
+                tx(
+                    "Location request timed out.",
+                    "Se agotó el tiempo para obtener la ubicación."
+                )
+            return
+        }
+
+        currentLocationMessage =
+            tx(
+                "Location services are unavailable.",
+                "Los servicios de ubicación no están disponibles."
+            )
+    }
+
+    function detectedPlaceLabel(properties) {
+        if (!properties)
+            return tx(
+                "Current location",
+                "Ubicación actual"
+            )
+
+        var primary =
+            properties.city
+            || properties.locality
+            || properties.district
+            || properties.county
+            || properties.name
+            || ""
+
+        var state =
+            properties.state || ""
+
+        var country =
+            properties.country || ""
+
+        var parts = []
+
+        function appendUnique(value) {
+            if (!value)
+                return
+
+            for (var i = 0; i < parts.length; ++i) {
+                if (parts[i] === value)
+                    return
+            }
+
+            parts.push(value)
+        }
+
+        appendUnique(primary)
+        appendUnique(state)
+        appendUnique(country)
+
+        if (parts.length === 0) {
+            return tx(
+                "Current location",
+                "Ubicación actual"
+            )
+        }
+
+        return parts.join(", ")
+    }
+
+    function applyDetectedLocation(
+        lat,
+        lon,
+        timezone,
+        label
+    ) {
+        latitude.text =
+            Number(lat).toFixed(6)
+
+        longitude.text =
+            Number(lon).toFixed(6)
+
+        cfg_timezone =
+            timezone || "UTC"
+
+        locationName.text =
+            label
+
+        locationSearch.text =
+            label
+
+        searchResults = []
+        resultsVisible = false
+        searchError = ""
+
+        locatingCurrent = false
+
+        currentLocationMessage =
+            tx(
+                "Location detected. Press Apply to save it.",
+                "Ubicación detectada. Pulsa Aplicar para guardarla."
+            )
+    }
+
+    function reverseCurrentLocation(
+        lat,
+        lon,
+        timezone
+    ) {
+        var language =
+            I18n.geocodingLanguage(
+                cfg_language
+            )
+
+        var url =
+            "https://photon.komoot.io/reverse"
+            + "?lat="
+            + encodeURIComponent(lat)
+            + "&lon="
+            + encodeURIComponent(lon)
+            + "&limit=1"
+            + "&lang="
+            + encodeURIComponent(language)
+
+        var request =
+            new XMLHttpRequest()
+
+        request.onreadystatechange =
+            function() {
+
+            if (request.readyState !== 4)
+                return
+
+            var fallback =
+                tx(
+                    "Current location",
+                    "Ubicación actual"
+                )
+
+            if (request.status !== 200) {
+                console.log(
+                    "Nostalgia Weather reverse geocoding HTTP error:",
+                    request.status
+                )
+
+                applyDetectedLocation(
+                    lat,
+                    lon,
+                    timezone,
+                    fallback
+                )
+
+                return
+            }
+
+            try {
+                var data =
+                    JSON.parse(
+                        request.responseText
+                    )
+
+                if (!data.features
+                        || data.features.length === 0) {
+
+                    applyDetectedLocation(
+                        lat,
+                        lon,
+                        timezone,
+                        fallback
+                    )
+
+                    return
+                }
+
+                var properties =
+                    data.features[0].properties
+
+                var label =
+                    detectedPlaceLabel(
+                        properties
+                    )
+
+                applyDetectedLocation(
+                    lat,
+                    lon,
+                    timezone,
+                    label
+                )
+
+            } catch (e) {
+                console.log(
+                    "Nostalgia Weather reverse geocoding parse error:",
+                    e
+                )
+
+                applyDetectedLocation(
+                    lat,
+                    lon,
+                    timezone,
+                    fallback
+                )
+            }
+        }
+
+        request.open(
+            "GET",
+            url
+        )
+
+        request.send()
+    }
+
+    function resolveCurrentTimezone(lat, lon) {
+        var url =
+            "https://api.open-meteo.com/v1/forecast"
+            + "?latitude="
+            + encodeURIComponent(lat)
+            + "&longitude="
+            + encodeURIComponent(lon)
+            + "&current=temperature_2m"
+            + "&timezone=auto"
+            + "&forecast_days=1"
+
+        var request =
+            new XMLHttpRequest()
+
+        request.onreadystatechange =
+            function() {
+
+            if (request.readyState !== 4)
+                return
+
+            if (request.status !== 200) {
+                locatingCurrent = false
+
+                currentLocationMessage =
+                    tx(
+                        "Could not determine the current time zone.",
+                        "No se pudo determinar la zona horaria actual."
+                    )
+
+                return
+            }
+
+            try {
+                var data =
+                    JSON.parse(
+                        request.responseText
+                    )
+
+                if (!data.timezone) {
+                    locatingCurrent = false
+
+                    currentLocationMessage =
+                        tx(
+                            "Could not determine the current time zone.",
+                            "No se pudo determinar la zona horaria actual."
+                        )
+
+                    return
+                }
+
+                /*
+                 * Timezone resolved.
+                 * Now obtain the human-readable location.
+                 */
+                reverseCurrentLocation(
+                    lat,
+                    lon,
+                    data.timezone
+                )
+
+            } catch (e) {
+                locatingCurrent = false
+
+                currentLocationMessage =
+                    tx(
+                        "Could not determine the current time zone.",
+                        "No se pudo determinar la zona horaria actual."
+                    )
+            }
+        }
+
+        request.open(
+            "GET",
+            url
+        )
+
+        request.send()
+    }
+
+
 
     function searchLocations() {
         var query =
@@ -340,6 +643,27 @@ Item {
     Component.onCompleted: {
         locationSearch.text =
             locationName.text
+    }
+
+    CurrentLocation {
+        id: currentLocation
+
+        onPositionReady:
+            function(latitudeValue, longitudeValue) {
+
+            page.resolveCurrentTimezone(
+                latitudeValue,
+                longitudeValue
+            )
+        }
+
+        onPositionFailed:
+            function(reason) {
+
+            page.locationFailure(
+                reason
+            )
+        }
     }
 
     Flickable {
@@ -518,6 +842,67 @@ Item {
                         Kirigami.Theme
                             .negativeTextColor
                 }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                QQC2.Button {
+                    text:
+                        page.tx(
+                            "Use current location",
+                            "Usar ubicación actual"
+                        )
+
+                    icon.name:
+                        "mark-location"
+
+                    enabled:
+                        !page.locatingCurrent
+
+                    onClicked: {
+                        page.currentLocationMessage =
+                            page.tx(
+                                "Detecting current location…",
+                                "Detectando ubicación actual…"
+                            )
+
+                        page.locatingCurrent = true
+
+                        currentLocation.request()
+                    }
+                }
+
+                QQC2.BusyIndicator {
+                    running:
+                        page.locatingCurrent
+
+                    visible:
+                        page.locatingCurrent
+
+                    implicitWidth: 26
+                    implicitHeight: 26
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+
+            QQC2.Label {
+                visible:
+                    page.currentLocationMessage !== ""
+
+                Layout.fillWidth: true
+
+                text:
+                    page.currentLocationMessage
+
+                wrapMode:
+                    Text.WordWrap
+
+                color:
+                    Kirigami.Theme.disabledTextColor
             }
 
             QQC2.TextField {
