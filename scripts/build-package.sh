@@ -45,6 +45,17 @@ with zipfile.ZipFile(
 
         relative = path.relative_to(package)
 
+        name = path.name
+
+        if (
+            ".bak" in name
+            or name.endswith("~")
+            or name.endswith(".orig")
+            or name.endswith(".rej")
+            or name == ".DS_Store"
+        ):
+            continue
+
         archive.write(
             path,
             relative.as_posix(),
