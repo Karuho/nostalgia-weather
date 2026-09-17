@@ -688,10 +688,14 @@ PlasmoidItem {
         id: card
 
         Layout.minimumWidth: 300
-        Layout.minimumHeight: 205
+
+        Layout.minimumHeight:
+            width < 390 ? 340 : 205
 
         Layout.preferredWidth: 430
-        Layout.preferredHeight: 305
+
+        Layout.preferredHeight:
+            width < 390 ? 340 : 305
 
         readonly property int requestedDays:
             Math.max(
@@ -970,13 +974,19 @@ PlasmoidItem {
                 Layout.fillWidth: true
 
                 Layout.preferredHeight:
-                    visible ? 28 : 0
+                    visible
+                    ? (
+                        card.width < 390
+                        ? 57
+                        : 28
+                    )
+                    : 0
 
                 Layout.minimumHeight:
-                    visible ? 28 : 0
+                    Layout.preferredHeight
 
                 Layout.maximumHeight:
-                    visible ? 28 : 0
+                    Layout.preferredHeight
 
                 columns:
                     card.width < 390 ? 2 : 4
@@ -1116,6 +1126,8 @@ PlasmoidItem {
             }
 
             GridLayout {
+                id: secondaryMetricsGrid
+
                 visible:
                     card.showAirDetails
                     && root.today !== null
@@ -1125,19 +1137,28 @@ PlasmoidItem {
                         || plasmoid.configuration.showMoon
                     )
 
+                readonly property bool compact:
+                    card.width < 390
+
                 Layout.fillWidth: true
 
                 Layout.preferredHeight:
-                    visible ? 28 : 0
+                    visible
+                    ? (
+                        compact
+                        ? 55
+                        : 28
+                    )
+                    : 0
 
                 Layout.minimumHeight:
-                    visible ? 28 : 0
+                    Layout.preferredHeight
 
                 Layout.maximumHeight:
-                    visible ? 28 : 0
+                    Layout.preferredHeight
 
                 columns:
-                    card.width < 390 ? 1 : 3
+                    compact ? 2 : 3
 
                 columnSpacing: 8
                 rowSpacing: 3
@@ -1165,6 +1186,16 @@ PlasmoidItem {
                                 + root.aqiText(
                                     root.currentAqi
                                 ),
+
+                            compactValue:
+                                "AQI "
+                                + (
+                                    isNaN(root.currentAqi)
+                                    ? "--"
+                                    : Math.round(
+                                        root.currentAqi
+                                    )
+                                ),
                             tooltip:
                                 i18n(
                                     "Calidad del aire (AQI): índice general de contaminación atmosférica"
@@ -1189,6 +1220,16 @@ PlasmoidItem {
                                     ).toFixed(1)
                                 )
                                 + " µg/m³",
+
+                            compactValue:
+                                (
+                                    isNaN(root.currentDust)
+                                    ? "--"
+                                    : Number(
+                                        root.currentDust
+                                    ).toFixed(1)
+                                )
+                                + " µg/m³",
                             tooltip:
                                 i18n(
                                     "Polvo presente en el ambiente"
@@ -1199,6 +1240,8 @@ PlasmoidItem {
                             enabled:
                                 plasmoid.configuration.showMoon,
 
+                            wide: true,
+
                             symbol:
                                 root.today !== null
                                 ? root.moonInfo(
@@ -1206,6 +1249,13 @@ PlasmoidItem {
                                   ).icon
                                 : "○",
                             value:
+                                root.today !== null
+                                ? root.moonInfo(
+                                      root.today.date
+                                  ).name
+                                : "--",
+
+                            compactValue:
                                 root.today !== null
                                 ? root.moonInfo(
                                       root.today.date
@@ -1226,6 +1276,13 @@ PlasmoidItem {
                             : modelData.enabled
 
                         Layout.fillWidth: visible
+
+                        Layout.columnSpan:
+                            secondaryMetricsGrid.compact
+                            && modelData.wide === true
+                            ? 2
+                            : 1
+
                         implicitHeight:
                             visible ? 26 : 0
 
@@ -1250,7 +1307,23 @@ PlasmoidItem {
                             }
 
                             PlasmaComponents.Label {
-                                text: modelData.value
+                                text:
+                                    secondaryMetricsGrid.compact
+                                    ? modelData.compactValue
+                                    : modelData.value
+
+                                elide: Text.ElideRight
+
+                                Layout.maximumWidth:
+                                    secondaryMetricsGrid.compact
+                                    ? Math.max(
+                                          60,
+                                          card.width / 2 - 48
+                                      )
+                                    : Math.max(
+                                          46,
+                                          card.width / 3 - 32
+                                      )
 
                                 color: "#eaffffff"
 
