@@ -7,7 +7,7 @@
         ],
         "Category": "Utilities",
         "Description": "A Windows 7 inspired weather widget for KDE Plasma 6",
-        "EnabledByDefault": false,
+        "EnabledByDefault": true,
         "Icon": "weather-clear",
         "Id": "io.github.karuho.nostalgiaweather",
         "License": "MIT",
