@@ -48,6 +48,31 @@ PlasmoidItem {
         ? "°F"
         : "°C"
 
+
+    readonly property string configuredLatitude:
+        String(
+            plasmoid.configuration.latitude
+            || ""
+        )
+
+    readonly property string configuredLongitude:
+        String(
+            plasmoid.configuration.longitude
+            || ""
+        )
+
+    readonly property string configuredTimezone:
+        String(
+            plasmoid.configuration.timezone
+            || "auto"
+        )
+
+    readonly property int configuredForecastDays:
+        Number(
+            plasmoid.configuration.forecastDays
+            || 7
+        )
+
     function tx(en, es) {
         return I18n.t(
             uiLanguage,
@@ -490,7 +515,17 @@ PlasmoidItem {
 
             if (request.status !== 200) {
                 errorText =
-                    tx("Unable to update weather", "No se pudo actualizar el clima")
+                    tx(
+                        "Unable to update weather",
+                        "No se pudo actualizar el clima"
+                    )
+
+                console.log(
+                    "Nostalgia Weather weather HTTP error:",
+                    request.status,
+                    request.responseText
+                )
+
                 return
             }
 
@@ -598,6 +633,19 @@ PlasmoidItem {
         refreshWeather()
 
     onTemperatureUnitChanged:
+        configurationRefreshTimer.restart()
+
+
+    onConfiguredLatitudeChanged:
+        configurationRefreshTimer.restart()
+
+    onConfiguredLongitudeChanged:
+        configurationRefreshTimer.restart()
+
+    onConfiguredTimezoneChanged:
+        configurationRefreshTimer.restart()
+
+    onConfiguredForecastDaysChanged:
         configurationRefreshTimer.restart()
 
     /*

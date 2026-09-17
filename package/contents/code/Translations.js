@@ -757,7 +757,111 @@ var strings = {
         "zh-TW": "天氣回應無效",
         ko: "잘못된 날씨 응답입니다",
         ru: "Некорректный ответ погоды"
+    },
+    "Use current location": {
+        es: "Usar ubicación actual",
+        pt: "Usar localização atual",
+        fr: "Utiliser la position actuelle",
+        de: "Aktuellen Standort verwenden",
+        it: "Usa posizione attuale",
+        ja: "現在地を使用",
+        "zh-CN": "使用当前位置",
+        "zh-TW": "使用目前位置",
+        ko: "현재 위치 사용",
+        ru: "Использовать текущее местоположение"
+    },
+
+    "Detecting current location…": {
+        es: "Detectando ubicación actual…",
+        pt: "Detectando localização atual…",
+        fr: "Détection de la position actuelle…",
+        de: "Aktueller Standort wird ermittelt…",
+        it: "Rilevamento della posizione attuale…",
+        ja: "現在地を取得しています…",
+        "zh-CN": "正在检测当前位置…",
+        "zh-TW": "正在偵測目前位置…",
+        ko: "현재 위치를 확인하는 중…",
+        ru: "Определение текущего местоположения…"
+    },
+
+    "Current location": {
+        es: "Ubicación actual",
+        pt: "Localização atual",
+        fr: "Position actuelle",
+        de: "Aktueller Standort",
+        it: "Posizione attuale",
+        ja: "現在地",
+        "zh-CN": "当前位置",
+        "zh-TW": "目前位置",
+        ko: "현재 위치",
+        ru: "Текущее местоположение"
+    },
+
+    "Location services are unavailable.": {
+        es: "Los servicios de ubicación no están disponibles.",
+        pt: "Os serviços de localização não estão disponíveis.",
+        fr: "Les services de localisation ne sont pas disponibles.",
+        de: "Standortdienste sind nicht verfügbar.",
+        it: "I servizi di localizzazione non sono disponibili.",
+        ja: "位置情報サービスを利用できません。",
+        "zh-CN": "位置服务不可用。",
+        "zh-TW": "定位服務無法使用。",
+        ko: "위치 서비스를 사용할 수 없습니다.",
+        ru: "Службы геолокации недоступны."
+    },
+
+    "Location access was denied.": {
+        es: "Se denegó el acceso a la ubicación.",
+        pt: "O acesso à localização foi negado.",
+        fr: "L’accès à la localisation a été refusé.",
+        de: "Der Zugriff auf den Standort wurde verweigert.",
+        it: "L'accesso alla posizione è stato negato.",
+        ja: "位置情報へのアクセスが拒否されました。",
+        "zh-CN": "位置访问被拒绝。",
+        "zh-TW": "定位存取遭到拒絕。",
+        ko: "위치 접근이 거부되었습니다.",
+        ru: "Доступ к геолокации запрещён."
+    },
+
+    "Location request timed out.": {
+        es: "Se agotó el tiempo para obtener la ubicación.",
+        pt: "A solicitação de localização expirou.",
+        fr: "La demande de localisation a expiré.",
+        de: "Zeitüberschreitung bei der Standortabfrage.",
+        it: "La richiesta della posizione è scaduta.",
+        ja: "位置情報の取得がタイムアウトしました。",
+        "zh-CN": "位置请求超时。",
+        "zh-TW": "定位要求逾時。",
+        ko: "위치 요청 시간이 초과되었습니다.",
+        ru: "Истекло время ожидания геолокации."
+    },
+
+    "Could not determine the current time zone.": {
+        es: "No se pudo determinar la zona horaria actual.",
+        pt: "Não foi possível determinar o fuso horário atual.",
+        fr: "Impossible de déterminer le fuseau horaire actuel.",
+        de: "Die aktuelle Zeitzone konnte nicht ermittelt werden.",
+        it: "Impossibile determinare il fuso orario corrente.",
+        ja: "現在のタイムゾーンを判定できませんでした。",
+        "zh-CN": "无法确定当前时区。",
+        "zh-TW": "無法判斷目前時區。",
+        ko: "현재 시간대를 확인할 수 없습니다.",
+        ru: "Не удалось определить текущий часовой пояс."
+    },
+
+    "Location detected. Press Apply to save it.": {
+        es: "Ubicación detectada. Pulsa Aplicar para guardarla.",
+        pt: "Localização detectada. Pressione Aplicar para salvar.",
+        fr: "Position détectée. Cliquez sur Appliquer pour l’enregistrer.",
+        de: "Standort erkannt. Zum Speichern auf Anwenden klicken.",
+        it: "Posizione rilevata. Premi Applica per salvarla.",
+        ja: "現在地を取得しました。適用を押して保存してください。",
+        "zh-CN": "已检测到位置。按“应用”保存。",
+        "zh-TW": "已偵測到位置。按「套用」儲存。",
+        ko: "위치를 확인했습니다. 적용을 눌러 저장하세요.",
+        ru: "Местоположение определено. Нажмите «Применить», чтобы сохранить."
     }
+
 }
 
 function t(language, english, spanishFallback) {
