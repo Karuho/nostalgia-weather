@@ -83,6 +83,12 @@ PlasmoidItem {
 
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
 
+    /*
+     * When Nostalgia Weather is enabled inside Plasma's
+     * System Tray, keep its compact representation visible.
+     */
+    Plasmoid.status: PlasmaCore.Types.ActiveStatus
+
     Plasmoid.icon: weatherIcon(currentCode, currentIsDay)
 
     toolTipMainText: locationName

@@ -22,4 +22,5 @@ kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 
 echo
 echo "Widget: $ID"
-echo "Prueba: plasmawindowed $ID"
+echo "Prueba ventana: plasmawindowed $ID"
+echo "Prueba bandeja: plasmawindowed --statusnotifier $ID"
