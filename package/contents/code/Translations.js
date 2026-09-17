@@ -29,6 +29,19 @@ var languageNames = [
 ]
 
 var strings = {
+    "Today": {
+        es: "Hoy",
+        pt: "Hoje",
+        fr: "Aujourd’hui",
+        de: "Heute",
+        it: "Oggi",
+        ja: "今日",
+        "zh-CN": "今天",
+        "zh-TW": "今天",
+        ko: "오늘",
+        ru: "Сегодня"
+    },
+
     "General": {
         es: "General",
         pt: "Geral",
