@@ -478,6 +478,155 @@ PlasmoidItem {
         request.send()
     }
 
+    function extendedWeatherCode(
+        cloudCover,
+        precipitation,
+        snowfall
+    ) {
+        cloudCover = Number(cloudCover)
+        precipitation = Number(precipitation)
+        snowfall = Number(snowfall)
+
+        if (isFinite(snowfall) && snowfall >= 0.5)
+            return 71
+
+        if (isFinite(precipitation)) {
+            if (precipitation >= 10)
+                return 65
+
+            if (precipitation >= 3)
+                return 63
+
+            if (precipitation >= 0.2)
+                return 61
+        }
+
+        if (!isFinite(cloudCover))
+            return 3
+
+        if (cloudCover < 20)
+            return 0
+
+        if (cloudCover < 50)
+            return 1
+
+        if (cloudCover < 80)
+            return 2
+
+        return 3
+    }
+
+    function refreshExtendedForecast(
+        lat,
+        lon,
+        baseDays
+    ) {
+        var url =
+            "https://ensemble-api.open-meteo.com/v1/ensemble"
+            + "?latitude=" + encodeURIComponent(lat)
+            + "&longitude=" + encodeURIComponent(lon)
+            + "&models=ncep_gefs05_ensemble_mean"
+            + "&daily="
+            + "temperature_2m_max,"
+            + "temperature_2m_min,"
+            + "cloud_cover_mean,"
+            + "precipitation_sum,"
+            + "snowfall_sum"
+            + "&temperature_unit="
+            + encodeURIComponent(
+                root.temperatureUnit
+            )
+            + "&timezone="
+            + encodeURIComponent(
+                plasmoid.configuration.timezone
+                || "auto"
+            )
+            + "&forecast_days=30"
+
+        var request = new XMLHttpRequest()
+
+        request.onreadystatechange = function() {
+            if (request.readyState !== 4)
+                return
+
+            if (request.status !== 200) {
+                console.log(
+                    "Nostalgia Weather extended outlook HTTP error:",
+                    request.status,
+                    request.responseText
+                )
+
+                return
+            }
+
+            try {
+                var data =
+                    JSON.parse(
+                        request.responseText
+                    )
+
+                if (
+                    !data.daily
+                    || !data.daily.time
+                ) {
+                    return
+                }
+
+                var days =
+                    baseDays.slice()
+
+                for (
+                    var i = days.length;
+                    i < data.daily.time.length
+                        && i < 30;
+                    ++i
+                ) {
+                    days.push({
+                        date:
+                            data.daily.time[i],
+
+                        code:
+                            root.extendedWeatherCode(
+                                data.daily.cloud_cover_mean[i],
+                                data.daily.precipitation_sum[i],
+                                data.daily.snowfall_sum[i]
+                            ),
+
+                        max:
+                            data.daily.temperature_2m_max[i],
+
+                        min:
+                            data.daily.temperature_2m_min[i],
+
+                        precip:
+                            data.daily.precipitation_sum[i],
+
+                        precipUnit:
+                            "mm",
+
+                        extended:
+                            true,
+
+                        uv: NaN,
+                        sunrise: "",
+                        sunset: ""
+                    })
+                }
+
+                forecast = days
+
+            } catch (e) {
+                console.log(
+                    "Nostalgia Weather extended outlook parse error:",
+                    e
+                )
+            }
+        }
+
+        request.open("GET", url)
+        request.send()
+    }
+
     function refreshWeather() {
         var lat = Number(
             String(
@@ -525,11 +674,12 @@ PlasmoidItem {
                 plasmoid.configuration.timezone
                 || "auto"
             )
-            + "&forecast_days="
+            +
+            "&forecast_days="
             + Math.max(
                 3,
                 Math.min(
-                    16,
+                    15,
                     Number(
                         plasmoid.configuration.forecastDays
                         || 7
@@ -615,6 +765,19 @@ PlasmoidItem {
 
                 forecast = days
                 errorText = ""
+
+                if (
+                    Number(
+                        plasmoid.configuration.forecastDays
+                        || 7
+                    ) > 15
+                ) {
+                    refreshExtendedForecast(
+                        lat,
+                        lon,
+                        days
+                    )
+                }
 
                 refreshAirQuality(lat, lon)
 
@@ -727,7 +890,7 @@ PlasmoidItem {
             Math.max(
                 3,
                 Math.min(
-                    16,
+                    30,
                     Number(
                         plasmoid.configuration.forecastDays
                         || 7
@@ -744,7 +907,12 @@ PlasmoidItem {
                 : (
                     width < 760
                     ? 10
-                    : 16
+                    : (
+                        width < 900
+                        || height < 520
+                        ? 16
+                        : 30
+                    )
                 )
             )
 
@@ -763,7 +931,11 @@ PlasmoidItem {
             : (
                 visibleDays <= 10
                 ? 5
-                : 8
+                : (
+                    visibleDays <= 16
+                    ? 8
+                    : 10
+                )
             )
 
         readonly property int forecastRows:
@@ -1425,7 +1597,13 @@ PlasmoidItem {
 
                 Layout.preferredHeight:
                     card.extendedForecast
-                    ? 170
+                    ? (
+                        card.forecastRows * 82
+                        + Math.max(
+                              0,
+                              card.forecastRows - 1
+                          ) * 8
+                    )
                     : (
                         card.height >= 320
                         ? 88
@@ -1434,7 +1612,13 @@ PlasmoidItem {
 
                 Layout.minimumHeight:
                     card.extendedForecast
-                    ? 164
+                    ? (
+                        card.forecastRows * 78
+                        + Math.max(
+                              0,
+                              card.forecastRows - 1
+                          ) * 8
+                    )
                     : (
                         card.height >= 320
                         ? 88
@@ -1578,11 +1762,21 @@ PlasmoidItem {
                                     Qt.AlignHCenter
 
                                 text:
-                                    "☂ "
-                                    + Math.round(
-                                        day.precip
+                                    day.precipUnit === "mm"
+                                    ? (
+                                        "☂ "
+                                        + Number(
+                                            day.precip
+                                        ).toFixed(1)
+                                        + " mm"
                                     )
-                                    + "%"
+                                    : (
+                                        "☂ "
+                                        + Math.round(
+                                            day.precip
+                                        )
+                                        + "%"
+                                    )
 
                                 color: "#cfffffff"
 
