@@ -7,7 +7,7 @@ Nostalgia Weather brings a resizable weather gadget to the Plasma desktop with o
 ## Features
 
 - Current weather and temperature
-- 3, 5, 7, 10 or 16-day forecast
+- 3, 5, 7, 10, 16 or 30-day forecast
 - Resizable desktop widget
 - Native Plasma System Tray integration
 - Current-location detection using Qt Positioning and GeoClue
@@ -27,6 +27,7 @@ Nostalgia Weather brings a resizable weather gadget to the Plasma desktop with o
 - No background daemon
 - No database
 - No telemetry
+- 30-day extended outlook using Open-Meteo ensemble data
 
 ## Requirements
 
@@ -157,3 +158,9 @@ https://github.com/Karuho/nostalgia-weather/issues
 MIT
 
 Copyright © 2026 DynaDev
+
+### Extended forecast
+
+Forecasts beyond the short-range forecast horizon use Open-Meteo ensemble
+data. Long-range outlooks have inherently greater uncertainty and should be
+treated as general guidance rather than precise daily predictions.

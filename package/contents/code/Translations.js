@@ -202,6 +202,12 @@ var strings = {
         "zh-CN": "16天", "zh-TW": "16天", ko: "16일", ru: "16 дней"
     },
 
+    "30 days": {
+        es: "30 días", pt: "30 dias", fr: "30 jours",
+        de: "30 Tage", it: "30 giorni", ja: "30日",
+        "zh-CN": "30天", "zh-TW": "30天", ko: "30일", ru: "30 дней"
+    },
+
     "Temperature:": {
         es: "Temperatura:",
         pt: "Temperatura:",

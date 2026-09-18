@@ -123,7 +123,8 @@ Item {
         5,
         7,
         10,
-        16
+        16,
+        30
     ]
 
     function tx(en, es) {
@@ -999,7 +1000,8 @@ Item {
                     page.tx("5 days", "5 días"),
                     page.tx("7 days", "7 días"),
                     page.tx("10 days", "10 días"),
-                    page.tx("16 days", "16 días")
+                    page.tx("16 days", "16 días"),
+                    page.tx("30 days", "30 días")
                 ]
 
                 currentIndex:
