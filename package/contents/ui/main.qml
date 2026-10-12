@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -73,12 +74,276 @@ PlasmoidItem {
             || 7
         )
 
+    /*
+     * SHARED LOCATION PROFILE
+     *
+     * Every running instance (desktop, System Tray, ...) has its
+     * own plasmoid.configuration. The geographic profile
+     * (name, latitude, longitude, timezone) is therefore mirrored
+     * through a small local settings file shared by all instances.
+     */
+    readonly property string configuredLocationName:
+        String(
+            plasmoid.configuration.locationName
+            || ""
+        )
+
+    property int sharedLocationRevision: 0
+    property bool applyingSharedLocation: false
+    property bool sharedLocationReady: false
+
+    Settings {
+        id: sharedLocationSettings
+
+        category: "SharedLocation"
+
+        location:
+            StandardPaths.writableLocation(
+                StandardPaths.GenericConfigLocation
+            )
+            + "/nostalgia-weather.conf"
+    }
+
     function tx(en, es) {
         return I18n.t(
             uiLanguage,
             en,
             es
         )
+    }
+
+    function sharedText(value) {
+        if (value === undefined || value === null)
+            return ""
+
+        if (
+            typeof value === "object"
+            && typeof value.join === "function"
+        ) {
+            return value.join(",")
+        }
+
+        return String(value)
+    }
+
+    function coordinateValue(text, limit) {
+        var trimmed = sharedText(text).trim()
+
+        if (trimmed === "")
+            return NaN
+
+        var value = Number(trimmed.replace(",", "."))
+
+        if (!isFinite(value) || Math.abs(value) > limit)
+            return NaN
+
+        return value
+    }
+
+    /*
+     * Returns a validated profile, or null when any part is invalid.
+     * Coordinates keep their original string representation.
+     */
+    function locationProfile(name, latitude, longitude, timezone) {
+        name = sharedText(name)
+        timezone = sharedText(timezone)
+
+        if (name.trim() === "" || timezone.trim() === "")
+            return null
+
+        var latitudeValue = coordinateValue(latitude, 90)
+        var longitudeValue = coordinateValue(longitude, 180)
+
+        if (isNaN(latitudeValue) || isNaN(longitudeValue))
+            return null
+
+        return {
+            locationName: name,
+            latitude: sharedText(latitude).trim(),
+            longitude: sharedText(longitude).trim(),
+            timezone: timezone,
+            latitudeValue: latitudeValue,
+            longitudeValue: longitudeValue
+        }
+    }
+
+    function currentLocationProfile() {
+        return locationProfile(
+            plasmoid.configuration.locationName,
+            plasmoid.configuration.latitude,
+            plasmoid.configuration.longitude,
+            plasmoid.configuration.timezone
+        )
+    }
+
+    function storedLocationProfile() {
+        return locationProfile(
+            sharedLocationSettings.value("locationName", ""),
+            sharedLocationSettings.value("latitude", ""),
+            sharedLocationSettings.value("longitude", ""),
+            sharedLocationSettings.value("timezone", "")
+        )
+    }
+
+    function storedLocationRevision() {
+        var revision = Math.floor(
+            Number(
+                sharedLocationSettings.value("revision", 0)
+            )
+        )
+
+        return isFinite(revision) && revision > 0
+            ? revision
+            : 0
+    }
+
+    function sameLocationProfile(a, b) {
+        return a.locationName === b.locationName
+            && a.timezone === b.timezone
+            && a.latitudeValue === b.latitudeValue
+            && a.longitudeValue === b.longitudeValue
+    }
+
+    /*
+     * Imports the shared profile into this instance's configuration.
+     * Returns true when any configuration value was changed.
+     * Existing configured*Changed handlers schedule the refresh.
+     */
+    function importSharedLocation() {
+        var revision = storedLocationRevision()
+
+        sharedLocationRevision = revision
+
+        if (revision <= 0)
+            return false
+
+        var profile = storedLocationProfile()
+
+        if (profile === null)
+            return false
+
+        var changed = false
+
+        applyingSharedLocation = true
+
+        try {
+            if (
+                sharedText(plasmoid.configuration.locationName)
+                !== profile.locationName
+            ) {
+                plasmoid.configuration.locationName =
+                    profile.locationName
+                changed = true
+            }
+
+            if (
+                coordinateValue(
+                    plasmoid.configuration.latitude,
+                    90
+                ) !== profile.latitudeValue
+            ) {
+                plasmoid.configuration.latitude =
+                    profile.latitude
+                changed = true
+            }
+
+            if (
+                coordinateValue(
+                    plasmoid.configuration.longitude,
+                    180
+                ) !== profile.longitudeValue
+            ) {
+                plasmoid.configuration.longitude =
+                    profile.longitude
+                changed = true
+            }
+
+            if (
+                sharedText(plasmoid.configuration.timezone)
+                !== profile.timezone
+            ) {
+                plasmoid.configuration.timezone =
+                    profile.timezone
+                changed = true
+            }
+        } finally {
+            applyingSharedLocation = false
+        }
+
+        return changed
+    }
+
+    function publishSharedLocation() {
+        var profile = currentLocationProfile()
+
+        if (profile === null)
+            return
+
+        sharedLocationSettings.sync()
+
+        var storedRevision = storedLocationRevision()
+        var stored = storedLocationProfile()
+
+        /* Already shared: avoid a pointless write and revision bump. */
+        if (
+            storedRevision > 0
+            && stored !== null
+            && sameLocationProfile(stored, profile)
+        ) {
+            sharedLocationRevision = storedRevision
+            return
+        }
+
+        var revision =
+            Math.max(
+                storedRevision,
+                sharedLocationRevision
+            ) + 1
+
+        sharedLocationSettings.setValue(
+            "locationName", profile.locationName
+        )
+        sharedLocationSettings.setValue(
+            "latitude", profile.latitude
+        )
+        sharedLocationSettings.setValue(
+            "longitude", profile.longitude
+        )
+        sharedLocationSettings.setValue(
+            "timezone", profile.timezone
+        )
+        sharedLocationSettings.setValue(
+            "revision", revision
+        )
+
+        sharedLocationSettings.sync()
+
+        sharedLocationRevision = revision
+    }
+
+    function scheduleSharedLocationPublish() {
+        if (!sharedLocationReady
+                || applyingSharedLocation
+                || !plasmoid.userConfiguring) {
+            return
+        }
+
+        sharedLocationPublishTimer.restart()
+    }
+
+    function pollSharedLocation() {
+        /* A local change is pending; it will supersede the file. */
+        if (sharedLocationPublishTimer.running)
+            return
+
+        sharedLocationSettings.sync()
+
+        var revision = storedLocationRevision()
+
+        if (revision === sharedLocationRevision)
+            return
+
+        importSharedLocation()
     }
 
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
@@ -824,21 +1089,67 @@ PlasmoidItem {
             root.refreshWeather()
     }
 
-    Component.onCompleted:
-        refreshWeather()
+    /* Coalesces the four related configuration changes. */
+    Timer {
+        id: sharedLocationPublishTimer
+
+        interval: 200
+        repeat: false
+
+        onTriggered:
+            root.publishSharedLocation()
+    }
+
+    /*
+     * Qt Settings instances do not notify each other, so each
+     * instance checks the shared revision once per second.
+     */
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.sharedLocationReady
+
+        onTriggered:
+            root.pollSharedLocation()
+    }
+
+    Component.onCompleted: {
+        sharedLocationSettings.sync()
+
+        /*
+         * Import only; never publish at startup so the first
+         * instance to start cannot overwrite the others.
+         */
+        root.importSharedLocation()
+
+        /* Changes from here on may be published. */
+        sharedLocationReady = true
+
+        /* Imported coordinates already scheduled a refresh. */
+        if (!configurationRefreshTimer.running)
+            refreshWeather()
+    }
 
     onTemperatureUnitChanged:
         configurationRefreshTimer.restart()
 
+    onConfiguredLocationNameChanged:
+        scheduleSharedLocationPublish()
 
-    onConfiguredLatitudeChanged:
+    onConfiguredLatitudeChanged: {
         configurationRefreshTimer.restart()
+        scheduleSharedLocationPublish()
+    }
 
-    onConfiguredLongitudeChanged:
+    onConfiguredLongitudeChanged: {
         configurationRefreshTimer.restart()
+        scheduleSharedLocationPublish()
+    }
 
-    onConfiguredTimezoneChanged:
+    onConfiguredTimezoneChanged: {
         configurationRefreshTimer.restart()
+        scheduleSharedLocationPublish()
+    }
 
     onConfiguredForecastDaysChanged:
         configurationRefreshTimer.restart()
