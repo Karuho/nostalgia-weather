@@ -65,6 +65,9 @@ Item {
     property alias cfg_showDailyPrecip:
         showDailyPrecip.checked
 
+    property alias cfg_showHourlyForecast:
+        showHourlyForecast.checked
+
     /*
      * Compatibilidad con configuraciones 0.2.0–0.2.2.
      * Ya no aparecen en la UI ni controlan los botones.
@@ -97,6 +100,7 @@ Item {
     property bool cfg_showDustDefault: true
     property bool cfg_showMoonDefault: true
     property bool cfg_showDailyPrecipDefault: true
+    property bool cfg_showHourlyForecastDefault: true
 
     property bool cfg_showConfigButtonDefault: true
     property bool cfg_showRefreshButtonDefault: true
@@ -1332,6 +1336,16 @@ Item {
                     page.tx(
                         "Daily precipitation below forecast",
                         "Precipitación diaria bajo el pronóstico"
+                    )
+            }
+
+            QQC2.CheckBox {
+                id: showHourlyForecast
+
+                text:
+                    page.tx(
+                        "Hourly forecast",
+                        "Pronóstico horario"
                     )
             }
 
