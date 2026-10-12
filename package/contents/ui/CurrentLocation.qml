@@ -186,20 +186,19 @@ Item {
                 return
             }
 
-            /*
-             * A terminal error after a valid fix was already seen
-             * should not throw that fix away.
-             */
-            if (root.haveFix) {
-                root.finish()
-                return
-            }
-
             if (sourceError
                     === PositionSource.AccessError) {
                 root.fail("access")
                 return
             }
+
+            /*
+             * Once a valid fix exists, sampleTimer owns completion.
+             * Do not finish early: a better fix may still arrive,
+             * and at worst the timer uses the last valid one.
+             */
+            if (root.haveFix)
+                return
 
             if (sourceError
                     === PositionSource.ClosedError) {
