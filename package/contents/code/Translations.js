@@ -894,6 +894,84 @@ var strings = {
         ru: "Почасовой прогноз"
     },
 
+    "Appearance": {
+        es: "Apariencia",
+        pt: "Aparência",
+        fr: "Apparence",
+        de: "Erscheinungsbild",
+        it: "Aspetto",
+        ja: "外観",
+        "zh-CN": "外观",
+        "zh-TW": "外觀",
+        ko: "모양",
+        ru: "Оформление"
+    },
+
+    "Theme:": {
+        es: "Tema:",
+        pt: "Tema:",
+        fr: "Thème :",
+        de: "Design:",
+        it: "Tema:",
+        ja: "テーマ:",
+        "zh-CN": "主题：",
+        "zh-TW": "主題：",
+        ko: "테마:",
+        ru: "Тема:"
+    },
+
+    "Windows 7 Classic": {
+        es: "Windows 7 Clásico",
+        pt: "Windows 7 Clássico",
+        fr: "Windows 7 Classique",
+        de: "Windows 7 Klassisch",
+        it: "Windows 7 Classico",
+        ja: "Windows 7 クラシック",
+        "zh-CN": "Windows 7 经典",
+        "zh-TW": "Windows 7 經典",
+        ko: "Windows 7 클래식",
+        ru: "Windows 7 Классический"
+    },
+
+    "Frutiger Aero": {
+        es: "Frutiger Aero",
+        pt: "Frutiger Aero",
+        fr: "Frutiger Aero",
+        de: "Frutiger Aero",
+        it: "Frutiger Aero",
+        ja: "Frutiger Aero",
+        "zh-CN": "Frutiger Aero",
+        "zh-TW": "Frutiger Aero",
+        ko: "Frutiger Aero",
+        ru: "Frutiger Aero"
+    },
+
+    "Rose Quartz": {
+        es: "Cuarzo Rosa",
+        pt: "Quartzo Rosa",
+        fr: "Quartz Rose",
+        de: "Rosenquarz",
+        it: "Quarzo Rosa",
+        ja: "ローズクォーツ",
+        "zh-CN": "玫瑰石英",
+        "zh-TW": "玫瑰石英",
+        ko: "로즈 쿼츠",
+        ru: "Розовый кварц"
+    },
+
+    "Astral Nebula": {
+        es: "Nebulosa Astral",
+        pt: "Nebulosa Astral",
+        fr: "Nébuleuse Astrale",
+        de: "Astraler Nebel",
+        it: "Nebulosa Astrale",
+        ja: "アストラル星雲",
+        "zh-CN": "星界星云",
+        "zh-TW": "星界星雲",
+        ko: "아스트랄 성운",
+        ru: "Астральная туманность"
+    },
+
     "hrs": {
         es: "hrs",
         pt: "h",

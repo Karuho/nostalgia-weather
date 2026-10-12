@@ -29,6 +29,10 @@
             <default>en</default>
         </entry>
 
+        <entry name="visualTheme" type="String">
+            <default>classic</default>
+        </entry>
+
         <entry name="temperatureUnit" type="String">
             <default>celsius</default>
         </entry>

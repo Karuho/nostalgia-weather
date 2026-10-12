@@ -32,6 +32,9 @@ Item {
     property string cfg_temperatureUnit:
         "celsius"
 
+    property string cfg_visualTheme:
+        "classic"
+
     property int cfg_forecastDays:
         7
 
@@ -88,6 +91,9 @@ Item {
     property string cfg_temperatureUnitDefault:
         "celsius"
 
+    property string cfg_visualThemeDefault:
+        "classic"
+
     property int cfg_updateMinutesDefault: 30
     property int cfg_forecastDaysDefault: 7
 
@@ -134,6 +140,13 @@ Item {
     property string currentPlace: ""
     property real currentLat: 0
     property real currentLon: 0
+
+    readonly property var themeValues: [
+        "classic",
+        "frutiger-aero",
+        "rose-quartz",
+        "astral-nebula"
+    ]
 
     readonly property var dayValues: [
         3,
@@ -1236,6 +1249,58 @@ Item {
                 color:
                     Kirigami.Theme
                         .disabledTextColor
+            }
+
+            QQC2.Label {
+                Kirigami.FormData.isSection:
+                    true
+
+                text:
+                    page.tx(
+                        "Appearance",
+                        "Apariencia"
+                    )
+            }
+
+            QQC2.ComboBox {
+                Kirigami.FormData.label:
+                    page.tx(
+                        "Theme:",
+                        "Tema:"
+                    )
+
+                model: [
+                    page.tx(
+                        "Windows 7 Classic",
+                        "Windows 7 Clásico"
+                    ),
+                    page.tx(
+                        "Frutiger Aero",
+                        "Frutiger Aero"
+                    ),
+                    page.tx(
+                        "Rose Quartz",
+                        "Cuarzo Rosa"
+                    ),
+                    page.tx(
+                        "Astral Nebula",
+                        "Nebulosa Astral"
+                    )
+                ]
+
+                currentIndex:
+                    Math.max(
+                        0,
+                        page.themeValues.indexOf(
+                            page.cfg_visualTheme
+                        )
+                    )
+
+                onActivated:
+                    page.cfg_visualTheme =
+                        page.themeValues[
+                            currentIndex
+                        ]
             }
 
             QQC2.Label {
