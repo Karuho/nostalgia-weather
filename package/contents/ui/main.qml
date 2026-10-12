@@ -143,6 +143,37 @@ PlasmoidItem {
         readonly property color divider:
             aero ? "#70ffffff" : "#45ffffff"
 
+        /*
+         * Frutiger Aero decorative layers only. These are never
+         * shown when classic is active.
+         */
+        readonly property color aeroSkyGlowTop:
+            "#4cd8fcff"
+
+        readonly property color aeroSkyGlowBottom:
+            "#003aa8e8"
+
+        readonly property color aeroHorizonTop:
+            "#0090e8ff"
+
+        readonly property color aeroHorizonCenter:
+            "#3ac8f6ff"
+
+        readonly property color aeroHorizonBottom:
+            "#0090e8ff"
+
+        readonly property color aeroFreshGlowTop:
+            "#0030d8a8"
+
+        readonly property color aeroFreshGlowBottom:
+            "#5a58f0b8"
+
+        readonly property color aeroSpecular:
+            "#34ffffff"
+
+        readonly property color aeroSpecularSoft:
+            "#08ffffff"
+
         readonly property color primaryText:
             "white"
 
@@ -1470,6 +1501,121 @@ PlasmoidItem {
                 GradientStop {
                     position: 1.0
                     color: theme.cardGradientBottom
+                }
+            }
+        }
+
+        // Frutiger Aero sky / glass bloom
+        Rectangle {
+            visible: theme.aero
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                margins: 1
+            }
+
+            height: parent.height * 0.30
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.aeroSkyGlowTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.aeroSkyGlowBottom
+                }
+            }
+        }
+
+        // Frutiger Aero luminous horizon band
+        Rectangle {
+            visible: theme.aero
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                margins: 1
+            }
+
+            y: parent.height * 0.42
+            height: parent.height * 0.13
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.aeroHorizonTop
+                }
+
+                GradientStop {
+                    position: 0.5
+                    color: theme.aeroHorizonCenter
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.aeroHorizonBottom
+                }
+            }
+        }
+
+        // Frutiger Aero fresh lower glow
+        Rectangle {
+            visible: theme.aero
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: 1
+            }
+
+            height: parent.height * 0.30
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.aeroFreshGlowTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.aeroFreshGlowBottom
+                }
+            }
+        }
+
+        // Frutiger Aero specular glass highlight
+        Rectangle {
+            visible: theme.aero
+
+            x: parent.width * 0.05
+            y: parent.height * 0.035
+            width: parent.width * 0.62
+            height: parent.height * 0.15
+
+            radius: height / 2
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.aeroSpecular
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.aeroSpecularSoft
                 }
             }
         }
