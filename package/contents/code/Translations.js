@@ -879,6 +879,32 @@ var strings = {
         "zh-TW": "已偵測到位置。按「套用」儲存。",
         ko: "위치를 확인했습니다. 적용을 눌러 저장하세요.",
         ru: "Местоположение определено. Нажмите «Применить», чтобы сохранить."
+    },
+
+    "Hourly forecast": {
+        es: "Pronóstico horario",
+        pt: "Previsão horária",
+        fr: "Prévisions horaires",
+        de: "Stündliche Vorhersage",
+        it: "Previsioni orarie",
+        ja: "時間ごとの予報",
+        "zh-CN": "每小时预报",
+        "zh-TW": "每小時預報",
+        ko: "시간별 예보",
+        ru: "Почасовой прогноз"
+    },
+
+    "hrs": {
+        es: "hrs",
+        pt: "h",
+        fr: "h",
+        de: "Uhr",
+        it: "h",
+        ja: "時",
+        "zh-CN": "时",
+        "zh-TW": "時",
+        ko: "시",
+        ru: "ч"
     }
 
 }

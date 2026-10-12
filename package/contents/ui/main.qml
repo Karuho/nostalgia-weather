@@ -21,6 +21,10 @@ PlasmoidItem {
 
     property var forecast: []
 
+    /* Next future forecast hours of the selected location. */
+    property var hourlyForecast: []
+    property string hourlyRequestKey: ""
+
     readonly property var today:
         forecast.length > 0 ? forecast[0] : null
 
@@ -892,6 +896,95 @@ PlasmoidItem {
         request.send()
     }
 
+    /*
+     * Builds the next-hours strip from the same weather response.
+     * Open-Meteo returns timezone-less local timestamps
+     * ("YYYY-MM-DDTHH:MM") for the selected location, so they are
+     * compared as strings against data.current.time and never go
+     * through Date (which would use the computer timezone).
+     */
+    function parseHourlyForecast(data) {
+        var items = []
+
+        try {
+            var hourly = data.hourly
+            var now = data.current ? data.current.time : ""
+
+            if (!hourly
+                    || typeof now !== "string"
+                    || now.length < 16
+                    || !Array.isArray(hourly.time))
+                return items
+
+            var temps = hourly.temperature_2m
+            var codes = hourly.weather_code
+            var precips = hourly.precipitation_probability
+            var days = hourly.is_day
+
+            for (
+                var i = 0;
+                i < hourly.time.length
+                    && items.length < 6;
+                ++i
+            ) {
+                var time = hourly.time[i]
+
+                if (typeof time !== "string"
+                        || time.length < 16
+                        || time <= now)
+                    continue
+
+                var temperature =
+                    Array.isArray(temps) && i < temps.length
+                    ? Number(temps[i])
+                    : NaN
+
+                var code =
+                    Array.isArray(codes) && i < codes.length
+                    ? Number(codes[i])
+                    : NaN
+
+                var hour = Number(time.substring(11, 13))
+
+                if (!isFinite(temperature)
+                        || !isFinite(code)
+                        || !isFinite(hour))
+                    continue
+
+                var precipitation =
+                    Array.isArray(precips) && i < precips.length
+                    && precips[i] !== null
+                    ? Number(precips[i])
+                    : NaN
+
+                items.push({
+                    time: time,
+                    hour: hour,
+                    code: code,
+                    temperature: temperature,
+                    precipitation:
+                        isFinite(precipitation)
+                        ? precipitation
+                        : NaN,
+                    isDay:
+                        Array.isArray(days)
+                        && i < days.length
+                        ? Number(days[i]) === 1
+                        : true
+                })
+            }
+        } catch (e) {
+            console.log(
+                "Nostalgia Weather hourly parse error:",
+                e
+            )
+
+            return []
+        }
+
+        return items
+    }
+
     function refreshWeather() {
         var lat = Number(
             String(
@@ -906,12 +999,24 @@ PlasmoidItem {
         )
 
         if (!isFinite(lat) || !isFinite(lon)) {
+            hourlyForecast = []
             errorText = tx("Invalid coordinates", "Coordenadas inválidas")
             return
         }
 
         loading = true
         errorText = ""
+
+        /* Never show hours of another place, timezone or unit. */
+        var hourlyKey =
+            lat + "|" + lon + "|"
+            + (plasmoid.configuration.timezone || "auto")
+            + "|" + root.temperatureUnit
+
+        if (hourlyKey !== hourlyRequestKey) {
+            hourlyForecast = []
+            hourlyRequestKey = hourlyKey
+        }
 
         var url =
             "https://api.open-meteo.com/v1/forecast"
@@ -930,6 +1035,12 @@ PlasmoidItem {
             + "uv_index_max,"
             + "sunrise,"
             + "sunset"
+            + "&hourly="
+            + "temperature_2m,"
+            + "weather_code,"
+            + "precipitation_probability,"
+            + "is_day"
+            + "&forecast_hours=8"
             + "&temperature_unit="
             + encodeURIComponent(
                 root.temperatureUnit
@@ -961,6 +1072,8 @@ PlasmoidItem {
             loading = false
 
             if (request.status !== 200) {
+                hourlyForecast = []
+
                 errorText =
                     tx(
                         "Unable to update weather",
@@ -1029,6 +1142,7 @@ PlasmoidItem {
                 }
 
                 forecast = days
+                hourlyForecast = parseHourlyForecast(data)
                 errorText = ""
 
                 if (
@@ -1047,6 +1161,8 @@ PlasmoidItem {
                 refreshAirQuality(lat, lon)
 
             } catch (e) {
+                hourlyForecast = []
+
                 errorText =
                     i18n(
                         "Respuesta meteorológica inválida"
@@ -1886,10 +2002,301 @@ PlasmoidItem {
             }
 
             Item {
+                id: hourlyArea
+
+                Layout.fillWidth: true
+
                 Layout.fillHeight:
                     !card.extendedForecast
 
                 Layout.minimumHeight: 0
+
+                Item {
+                    id: hourlyStrip
+
+                    readonly property bool active:
+                        !card.extendedForecast
+                        && plasmoid.configuration.showHourlyForecast
+                        && root.hourlyForecast.length > 0
+
+                    readonly property int capacity:
+                        card.width < 370
+                        ? 4
+                        : (
+                            card.width < 430
+                            ? 5
+                            : 6
+                        )
+
+                    // Vertical fit tiers inside the flexible area:
+                    // 2 = full, 1 = reduced icon, 0 = compact.
+                    readonly property int tier:
+                        hourlyArea.height >= 68
+                        ? 2
+                        : (
+                            hourlyArea.height >= 58
+                            ? 1
+                            : 0
+                        )
+
+                    // Ultra-compact: 3 rows (hour, icon, temp + precip).
+                    readonly property bool ultra:
+                        hourlyArea.height >= 34
+                        && hourlyArea.height < 46
+
+                    readonly property int iconSize:
+                        tier === 2 ? 26 : (tier === 1 ? 20 : 14)
+
+                    // Fixed line boxes in the reduced tiers so the four
+                    // rows stay within the available height.
+                    readonly property real hourFont:
+                        tier === 2
+                        ? Math.max(9, Math.min(12, card.width / 38))
+                        : (tier === 1 ? 10 : 9)
+
+                    readonly property real tempFont:
+                        tier === 2
+                        ? Math.max(10, Math.min(12, card.width / 36))
+                        : (tier === 1 ? 10 : 9)
+
+                    readonly property real precipFont:
+                        tier === 2
+                        ? Math.max(8, Math.min(10, card.width / 43))
+                        : (tier === 1 ? 9 : 8)
+
+                    readonly property int lineExtra:
+                        tier === 1 ? 3 : 2
+
+                    visible: active && hourlyArea.height >= 34
+                    clip: true
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    height: Math.min(68, hourlyArea.height)
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 2
+
+                        Repeater {
+                            model:
+                                Math.min(
+                                    hourlyStrip.capacity,
+                                    root.hourlyForecast.length
+                                )
+
+                            delegate: Item {
+                                required property int index
+
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.preferredWidth: 1
+
+                                readonly property var entry:
+                                    root.hourlyForecast[index]
+
+                                ColumnLayout {
+                                    visible: !hourlyStrip.ultra
+
+                                    anchors.centerIn: parent
+                                    width: parent.width
+
+                                    spacing:
+                                        hourlyStrip.tier === 2 ? 1 : 0
+
+                                    PlasmaComponents.Label {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        text:
+                                            entry.hour
+                                            + " "
+                                            + root.tx("hrs", "hrs")
+
+                                        color: "#efffffff"
+
+                                        font.bold: true
+
+                                        font.pixelSize:
+                                            hourlyStrip.hourFont
+
+                                        verticalAlignment:
+                                            Text.AlignVCenter
+
+                                        Layout.preferredHeight:
+                                            hourlyStrip.tier === 2
+                                            ? -1
+                                            : hourlyStrip.hourFont
+                                              + hourlyStrip.lineExtra
+                                    }
+
+                                    Kirigami.Icon {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        Layout.preferredWidth:
+                                            hourlyStrip.iconSize
+
+                                        Layout.preferredHeight:
+                                            Layout.preferredWidth
+
+                                        source:
+                                            root.weatherIcon(
+                                                entry.code,
+                                                entry.isDay
+                                            )
+                                    }
+
+                                    PlasmaComponents.Label {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        text:
+                                            Math.round(
+                                                entry.temperature
+                                            )
+                                            + "°"
+
+                                        color: "white"
+
+                                        font.pixelSize:
+                                            hourlyStrip.tempFont
+
+                                        verticalAlignment:
+                                            Text.AlignVCenter
+
+                                        Layout.preferredHeight:
+                                            hourlyStrip.tier === 2
+                                            ? -1
+                                            : hourlyStrip.tempFont
+                                              + hourlyStrip.lineExtra
+                                    }
+
+                                    PlasmaComponents.Label {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        text:
+                                            "☂ "
+                                            + (
+                                                isFinite(
+                                                    entry.precipitation
+                                                )
+                                                ? Math.round(
+                                                    entry.precipitation
+                                                ) + "%"
+                                                : "--"
+                                            )
+
+                                        color: "#cfffffff"
+
+                                        font.pixelSize:
+                                            hourlyStrip.precipFont
+
+                                        verticalAlignment:
+                                            Text.AlignVCenter
+
+                                        Layout.preferredHeight:
+                                            hourlyStrip.tier === 2
+                                            ? -1
+                                            : hourlyStrip.precipFont
+                                              + hourlyStrip.lineExtra
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    visible: hourlyStrip.ultra
+
+                                    anchors.centerIn: parent
+                                    width: parent.width
+
+                                    spacing: 0
+
+                                    PlasmaComponents.Label {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        text:
+                                            entry.hour
+                                            + " "
+                                            + root.tx("hrs", "hrs")
+
+                                        color: "#efffffff"
+
+                                        font.bold: true
+                                        font.pixelSize: 9
+
+                                        verticalAlignment:
+                                            Text.AlignVCenter
+
+                                        Layout.preferredHeight: 11
+                                    }
+
+                                    Kirigami.Icon {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        Layout.preferredWidth: 13
+                                        Layout.preferredHeight: 13
+
+                                        source:
+                                            root.weatherIcon(
+                                                entry.code,
+                                                entry.isDay
+                                            )
+                                    }
+
+                                    RowLayout {
+                                        Layout.alignment:
+                                            Qt.AlignHCenter
+
+                                        Layout.preferredHeight: 10
+
+                                        spacing: 3
+
+                                        PlasmaComponents.Label {
+                                            text:
+                                                Math.round(
+                                                    entry.temperature
+                                                )
+                                                + "°"
+
+                                            color: "white"
+
+                                            font.pixelSize: 9
+
+                                            verticalAlignment:
+                                                Text.AlignVCenter
+                                        }
+
+                                        PlasmaComponents.Label {
+                                            text:
+                                                "☂"
+                                                + (
+                                                    isFinite(
+                                                        entry.precipitation
+                                                    )
+                                                    ? Math.round(
+                                                        entry.precipitation
+                                                    ) + "%"
+                                                    : "--"
+                                                )
+
+                                            color: "#cfffffff"
+
+                                            font.pixelSize: 8
+
+                                            verticalAlignment:
+                                                Text.AlignVCenter
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Rectangle {
