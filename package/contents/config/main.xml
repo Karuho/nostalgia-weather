@@ -37,6 +37,10 @@
             <default>celsius</default>
         </entry>
 
+        <entry name="weatherProvider" type="String">
+            <default>auto</default>
+        </entry>
+
         <entry name="updateMinutes" type="Int">
             <default>30</default>
         </entry>
