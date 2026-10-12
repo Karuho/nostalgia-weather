@@ -172,6 +172,71 @@ var strings = {
         ru: "Количество дней:"
     },
 
+    "Weather provider:": {
+        es: "Proveedor del clima:",
+        pt: "Provedor de clima:",
+        fr: "Fournisseur météo :",
+        de: "Wetterdienst:",
+        it: "Fornitore meteo:",
+        ja: "天気プロバイダー:",
+        "zh-CN": "天气数据源：",
+        "zh-TW": "天氣資料來源：",
+        ko: "날씨 제공자:",
+        ru: "Источник погоды:"
+    },
+
+    "Automatic": {
+        es: "Automático",
+        pt: "Automático",
+        fr: "Automatique",
+        de: "Automatisch",
+        it: "Automatico",
+        ja: "自動",
+        "zh-CN": "自动",
+        "zh-TW": "自動",
+        ko: "자동",
+        ru: "Автоматически"
+    },
+
+    "Open-Meteo": {
+        es: "Open-Meteo",
+        pt: "Open-Meteo",
+        fr: "Open-Meteo",
+        de: "Open-Meteo",
+        it: "Open-Meteo",
+        ja: "Open-Meteo",
+        "zh-CN": "Open-Meteo",
+        "zh-TW": "Open-Meteo",
+        ko: "Open-Meteo",
+        ru: "Open-Meteo"
+    },
+
+    "MET Norway": {
+        es: "MET Norway",
+        pt: "MET Norway",
+        fr: "MET Norway",
+        de: "MET Norway",
+        it: "MET Norway",
+        ja: "MET Norway",
+        "zh-CN": "MET Norway",
+        "zh-TW": "MET Norway",
+        ko: "MET Norway",
+        ru: "MET Norway"
+    },
+
+    "Weather data fallback provided by MET Norway · CC BY 4.0": {
+        es: "Datos meteorológicos de respaldo proporcionados por MET Norway · CC BY 4.0",
+        pt: "Dados meteorológicos de reserva fornecidos pelo MET Norway · CC BY 4.0",
+        fr: "Données météo de secours fournies par MET Norway · CC BY 4.0",
+        de: "Ausweich-Wetterdaten von MET Norway · CC BY 4.0",
+        it: "Dati meteo di riserva forniti da MET Norway · CC BY 4.0",
+        ja: "予備の気象データ提供元: MET Norway · CC BY 4.0",
+        "zh-CN": "备用天气数据由 MET Norway 提供 · CC BY 4.0",
+        "zh-TW": "備援天氣資料由 MET Norway 提供 · CC BY 4.0",
+        ko: "대체 날씨 데이터 제공: MET Norway · CC BY 4.0",
+        ru: "Резервные данные о погоде предоставлены MET Norway · CC BY 4.0"
+    },
+
     "3 days": {
         es: "3 días", pt: "3 dias", fr: "3 jours",
         de: "3 Tage", it: "3 giorni", ja: "3日",

@@ -35,6 +35,15 @@ PlasmoidItem {
     property bool loading: false
     property string errorText: ""
 
+    /* Provider that supplied the data currently displayed. */
+    property string activeWeatherProvider: ""
+
+    /* Incremented by every refreshWeather(); stale callbacks are ignored. */
+    property int weatherRequestSerial: 0
+
+    /* Forecast capacity of the provider supplying the displayed data. */
+    property int forecastProviderLimit: 30
+
     readonly property string locationName:
         plasmoid.configuration.locationName || tx(
             "Location",
@@ -46,6 +55,9 @@ PlasmoidItem {
 
     readonly property string visualTheme:
         plasmoid.configuration.visualTheme || "classic"
+
+    readonly property string weatherProvider:
+        plasmoid.configuration.weatherProvider || "auto"
 
     readonly property string temperatureUnit:
         plasmoid.configuration.temperatureUnit
@@ -103,6 +115,25 @@ PlasmoidItem {
         id: sharedLocationSettings
 
         category: "SharedLocation"
+
+        location:
+            StandardPaths.writableLocation(
+                StandardPaths.GenericConfigLocation
+            )
+            + "/nostalgia-weather.conf"
+    }
+
+    /*
+     * MET NORWAY CACHE
+     *
+     * Small normalized payload plus the HTTP cache metadata
+     * (Expires / Last-Modified), shared by every running instance
+     * through the same settings file as the shared location.
+     */
+    Settings {
+        id: metNorwayCacheSettings
+
+        category: "MetNorwayCache"
 
         location:
             StandardPaths.writableLocation(
@@ -939,7 +970,45 @@ PlasmoidItem {
         )
     }
 
+    /* Finite number, or NaN for null/undefined/empty/non-numeric. */
+    function metricNumber(value) {
+        if (value === null || value === undefined || value === "")
+            return NaN
+
+        var number = Number(value)
+
+        return isFinite(number) ? number : NaN
+    }
+
+    function percentText(value) {
+        var number = metricNumber(value)
+
+        return isNaN(number)
+            ? "--"
+            : Math.round(number) + "%"
+    }
+
+    function uvText(value) {
+        var number = metricNumber(value)
+
+        return "UV " + (
+            isNaN(number)
+            ? "--"
+            : number.toFixed(1)
+        )
+    }
+
+    /*
+     * Open-Meteo air quality is independent of the weather provider:
+     * a failure leaves the values at NaN and never touches errorText.
+     */
     function refreshAirQuality(lat, lon) {
+        var serial = root.weatherRequestSerial
+
+        currentAqi = NaN
+        currentDust = NaN
+        currentPm25 = NaN
+
         var url =
             "https://air-quality-api.open-meteo.com/v1/air-quality"
             + "?latitude=" + encodeURIComponent(lat)
@@ -955,6 +1024,9 @@ PlasmoidItem {
 
         request.onreadystatechange = function() {
             if (request.readyState !== 4)
+                return
+
+            if (serial !== root.weatherRequestSerial)
                 return
 
             if (request.status !== 200)
@@ -1021,6 +1093,7 @@ PlasmoidItem {
     }
 
     function refreshExtendedForecast(
+        serial,
         lat,
         lon,
         baseDays
@@ -1051,6 +1124,9 @@ PlasmoidItem {
 
         request.onreadystatechange = function() {
             if (request.readyState !== 4)
+                return
+
+            if (serial !== root.weatherRequestSerial)
                 return
 
             if (request.status !== 200) {
@@ -1220,7 +1296,70 @@ PlasmoidItem {
         return items
     }
 
+    /*
+     * Final failure of a refresh cycle (every allowed provider
+     * failed). Intermediate provider failures never reach this.
+     */
+    function failWeather(serial) {
+        if (serial !== root.weatherRequestSerial)
+            return
+
+        hourlyForecast = []
+        loading = false
+
+        errorText =
+            tx(
+                "Unable to update weather",
+                "No se pudo actualizar el clima"
+            )
+    }
+
+    /*
+     * Single place where a normalized provider result mutates the
+     * weather state. result:
+     *   currentTemperature, apparentTemperature, currentCode,
+     *   currentIsDay, forecast, hourlyForecast, forecastLimit,
+     *   lat, lon
+     */
+    function applyWeatherResult(serial, providerId, result) {
+        if (serial !== root.weatherRequestSerial)
+            return
+
+        currentTemperature = result.currentTemperature
+        apparentTemperature = result.apparentTemperature
+        currentCode = result.currentCode
+        currentIsDay = result.currentIsDay
+
+        forecast = result.forecast
+        hourlyForecast = result.hourlyForecast
+        forecastProviderLimit = result.forecastLimit
+
+        activeWeatherProvider = providerId
+        errorText = ""
+        loading = false
+
+        /* The 16-30 day outlook is an Open-Meteo-only extension. */
+        if (
+            providerId === "open-meteo"
+            && Number(
+                plasmoid.configuration.forecastDays
+                || 7
+            ) > 15
+        ) {
+            refreshExtendedForecast(
+                serial,
+                result.lat,
+                result.lon,
+                result.forecast
+            )
+        }
+
+        refreshAirQuality(result.lat, result.lon)
+    }
+
     function refreshWeather() {
+        var serial = ++root.weatherRequestSerial
+
         var lat = Number(
             String(
                 plasmoid.configuration.latitude
@@ -1235,6 +1374,7 @@ PlasmoidItem {
 
         if (!isFinite(lat) || !isFinite(lon)) {
             hourlyForecast = []
+            loading = false
             errorText = tx("Invalid coordinates", "Coordenadas inválidas")
             return
         }
@@ -1253,6 +1393,105 @@ PlasmoidItem {
             hourlyRequestKey = hourlyKey
         }
 
+        if (root.weatherProvider === "met-norway") {
+            requestMetNorwayWeather(serial, lat, lon)
+            return
+        }
+
+        /* "auto" (and any unknown value) may fall back to MET Norway. */
+        requestOpenMeteoWeather(
+            serial,
+            lat,
+            lon,
+            root.weatherProvider !== "open-meteo"
+        )
+    }
+
+    /*
+     * Maps an Open-Meteo forecast response to the normalized result.
+     * Returns null when the response is structurally invalid.
+     */
+    function openMeteoResult(data, lat, lon) {
+        if (!data
+                || !data.current
+                || !data.daily
+                || !Array.isArray(data.daily.time)
+                || data.daily.time.length === 0
+                || !Array.isArray(data.daily.weather_code)
+                || !Array.isArray(data.daily.temperature_2m_max)
+                || !Array.isArray(data.daily.temperature_2m_min)
+                || !Array.isArray(
+                       data.daily.precipitation_probability_max)
+                || !Array.isArray(data.daily.uv_index_max)
+                || !Array.isArray(data.daily.sunrise)
+                || !Array.isArray(data.daily.sunset)
+                || !isFinite(Number(data.current.temperature_2m))) {
+            return null
+        }
+
+        var days = []
+
+        for (
+            var i = 0;
+            i < data.daily.time.length;
+            ++i
+        ) {
+            days.push({
+                date:
+                    data.daily.time[i],
+
+                code:
+                    data.daily.weather_code[i],
+
+                max:
+                    data.daily.temperature_2m_max[i],
+
+                min:
+                    data.daily.temperature_2m_min[i],
+
+                precip:
+                    data.daily
+                        .precipitation_probability_max[i],
+
+                uv:
+                    data.daily.uv_index_max[i],
+
+                sunrise:
+                    data.daily.sunrise[i],
+
+                sunset:
+                    data.daily.sunset[i]
+            })
+        }
+
+        return {
+            currentTemperature:
+                data.current.temperature_2m,
+
+            apparentTemperature:
+                data.current.apparent_temperature,
+
+            currentCode:
+                data.current.weather_code,
+
+            currentIsDay:
+                data.current.is_day === 1,
+
+            forecast: days,
+            hourlyForecast: parseHourlyForecast(data),
+            forecastLimit: 30,
+
+            lat: lat,
+            lon: lon
+        }
+    }
+
+    function requestOpenMeteoWeather(
+        serial,
+        lat,
+        lon,
+        allowFallback
+    ) {
         var url =
             "https://api.open-meteo.com/v1/forecast"
             + "?latitude=" + encodeURIComponent(lat)
@@ -1304,113 +1543,911 @@ PlasmoidItem {
             if (request.readyState !== 4)
                 return
 
-            loading = false
+            /* Superseded by a newer refresh: ignore completely. */
+            if (serial !== root.weatherRequestSerial)
+                return
+
+            var result = null
 
             if (request.status !== 200) {
-                hourlyForecast = []
-
-                errorText =
-                    tx(
-                        "Unable to update weather",
-                        "No se pudo actualizar el clima"
-                    )
-
                 console.log(
                     "Nostalgia Weather weather HTTP error:",
                     request.status,
                     request.responseText
                 )
+            } else {
+                try {
+                    result = root.openMeteoResult(
+                        JSON.parse(request.responseText),
+                        lat,
+                        lon
+                    )
+                } catch (e) {
+                    console.log(
+                        "Nostalgia Weather parse error:",
+                        e
+                    )
+                }
 
+                if (result === null) {
+                    console.log(
+                        "Nostalgia Weather Open-Meteo response is invalid"
+                    )
+                }
+            }
+
+            if (result !== null) {
+                root.applyWeatherResult(
+                    serial,
+                    "open-meteo",
+                    result
+                )
                 return
             }
 
-            try {
-                var data = JSON.parse(
-                    request.responseText
+            /* loading stays true while the fallback is in flight. */
+            if (allowFallback) {
+                root.requestMetNorwayWeather(serial, lat, lon)
+                return
+            }
+
+            root.failWeather(serial)
+        }
+
+        request.open("GET", url)
+        request.send()
+    }
+
+    /*
+     * MET NORWAY LOCATIONFORECAST
+     */
+    function pad2(value) {
+        return (value < 10 ? "0" : "") + value
+    }
+
+    /* "rounded to at most four decimals" (service terms). */
+    function metCoordinate(value) {
+        return String(Number(Number(value).toFixed(4)))
+    }
+
+    function metNumber(value) {
+        return typeof value === "number" && isFinite(value)
+            ? value
+            : NaN
+    }
+
+    function metTemperature(celsius, fahrenheit) {
+        var value = fahrenheit
+            ? celsius * 9 / 5 + 32
+            : celsius
+
+        return Math.round(value * 10) / 10
+    }
+
+    /*
+     * Closest existing weather-code model (WMO-like) for a MET
+     * symbol_code. Unknown symbols return -1.
+     */
+    function metSymbolToWeatherCode(symbolCode) {
+        var symbol =
+            String(symbolCode || "")
+                .toLowerCase()
+                .replace(/_(day|night|polartwilight)$/, "")
+
+        if (symbol === "")
+            return -1
+
+        if (symbol.indexOf("thunder") >= 0)
+            return 95
+
+        var heavy = symbol.indexOf("heavy") === 0
+        var light = symbol.indexOf("light") === 0
+        var showers = symbol.indexOf("showers") >= 0
+
+        if (symbol.indexOf("sleet") >= 0) {
+            if (showers)
+                return 81
+
+            return light ? 66 : 67
+        }
+
+        if (symbol.indexOf("snow") >= 0) {
+            if (showers)
+                return heavy ? 86 : 85
+
+            if (heavy)
+                return 75
+
+            return light ? 71 : 73
+        }
+
+        if (symbol.indexOf("rain") >= 0) {
+            if (showers) {
+                if (heavy)
+                    return 82
+
+                return light ? 80 : 81
+            }
+
+            if (heavy)
+                return 65
+
+            return light ? 61 : 63
+        }
+
+        if (symbol === "clearsky")
+            return 0
+
+        if (symbol === "fair")
+            return 1
+
+        if (symbol === "partlycloudy")
+            return 2
+
+        if (symbol === "cloudy")
+            return 3
+
+        if (symbol === "fog")
+            return 45
+
+        return -1
+    }
+
+    function metSymbolIsDay(symbolCode) {
+        return !/_night$/.test(
+            String(symbolCode || "").toLowerCase()
+        )
+    }
+
+    /* Optional MET forecast period: symbol and rain probability. */
+    function metPeriod(period) {
+        var summary = period ? period.summary : null
+        var details = period ? period.details : null
+
+        return {
+            symbol:
+                summary
+                && typeof summary.symbol_code === "string"
+                ? summary.symbol_code
+                : "",
+
+            probability:
+                metNumber(
+                    details
+                    ? details.probability_of_precipitation
+                    : undefined
+                )
+        }
+    }
+
+    /*
+     * LOCATION-LOCAL TIME FROM A UTC INSTANT
+     *
+     * Qt can parse an IANA zone id ("tttt"), but cannot print an
+     * instant in a zone. So the zone is used in the parsing
+     * direction: a wall-clock string + zone -> real instant. The
+     * zone offset for the timestamp is found from that (wall
+     * clock = instant + offset), the instant is shifted by it, and
+     * the shifted Date is read with UTC getters, so the host
+     * timezone never leaks in. DST is resolved per timestamp.
+     */
+    function zoneInstant(wallMs, zone) {
+        try {
+            var wall = new Date(wallMs)
+
+            var text =
+                wall.getUTCFullYear()
+                + "-" + pad2(wall.getUTCMonth() + 1)
+                + "-" + pad2(wall.getUTCDate())
+                + " " + pad2(wall.getUTCHours())
+                + ":" + pad2(wall.getUTCMinutes())
+                + ":" + pad2(wall.getUTCSeconds())
+                + " " + zone
+
+            var parsed =
+                Date.fromLocaleString(
+                    Qt.locale("en_US"),
+                    text,
+                    "yyyy-MM-dd hh:mm:ss tttt"
                 )
 
-                currentTemperature =
-                    data.current.temperature_2m
+            var value = parsed ? parsed.getTime() : NaN
 
-                apparentTemperature =
-                    data.current.apparent_temperature
+            return isFinite(value) ? value : NaN
+        } catch (e) {
+            return NaN
+        }
+    }
 
-                currentCode =
-                    data.current.weather_code
+    /* null: the zone could not be parsed at all. */
+    function zoneOffsetSolve(ms, zone) {
+        var offset = 0
 
-                currentIsDay =
-                    data.current.is_day === 1
+        for (var i = 0; i < 4; ++i) {
+            var back = zoneInstant(ms + offset, zone)
 
-                var days = []
+            if (!isFinite(back))
+                return null
 
-                for (
-                    var i = 0;
-                    i < data.daily.time.length;
-                    ++i
-                ) {
-                    days.push({
-                        date:
-                            data.daily.time[i],
+            var next = ms + offset - back
 
-                        code:
-                            data.daily.weather_code[i],
+            if (next === offset)
+                return { offset: offset, exact: true }
 
-                        max:
-                            data.daily.temperature_2m_max[i],
+            offset = next
+        }
 
-                        min:
-                            data.daily.temperature_2m_min[i],
+        return { offset: offset, exact: false }
+    }
 
-                        precip:
-                            data.daily
-                                .precipitation_probability_max[i],
+    /*
+     * tz = { zone, offset } keeps the last offset as the first
+     * candidate, so a series normally costs one parse per entry.
+     * Returns { date: "YYYY-MM-DD", hour, minute } or null.
+     */
+    function zonedParts(ms, tz) {
+        var offset = null
 
-                        uv:
-                            data.daily.uv_index_max[i],
+        if (tz.offset !== null
+                && zoneInstant(ms + tz.offset, tz.zone) === ms) {
+            offset = tz.offset
+        }
 
-                        sunrise:
-                            data.daily.sunrise[i],
+        if (offset === null) {
+            var solved = zoneOffsetSolve(ms, tz.zone)
 
-                        sunset:
-                            data.daily.sunset[i]
-                    })
+            if (solved === null)
+                return null
+
+            if (solved.exact) {
+                offset = solved.offset
+            } else {
+                /* Near a DST transition: try the neighbouring days. */
+                var around = [ms - 86400000, ms + 86400000]
+
+                for (var i = 0; i < around.length; ++i) {
+                    var other = zoneOffsetSolve(around[i], tz.zone)
+
+                    if (other !== null
+                            && other.exact
+                            && zoneInstant(
+                                   ms + other.offset,
+                                   tz.zone) === ms) {
+                        offset = other.offset
+                        break
+                    }
                 }
 
-                forecast = days
-                hourlyForecast = parseHourlyForecast(data)
-                errorText = ""
+                /* Repeated wall-clock hour: best available offset. */
+                if (offset === null)
+                    offset = solved.offset
+            }
+        }
 
-                if (
-                    Number(
-                        plasmoid.configuration.forecastDays
-                        || 7
-                    ) > 15
-                ) {
-                    refreshExtendedForecast(
-                        lat,
-                        lon,
-                        days
-                    )
+        tz.offset = offset
+
+        var shifted = new Date(ms + offset)
+
+        return {
+            date:
+                shifted.getUTCFullYear()
+                + "-" + pad2(shifted.getUTCMonth() + 1)
+                + "-" + pad2(shifted.getUTCDate()),
+
+            hour: shifted.getUTCHours(),
+            minute: shifted.getUTCMinutes()
+        }
+    }
+
+    /*
+     * MET JSON -> small normalized payload (cacheable):
+     *   days:  { date, code, max, min, precip|null, uv|null }
+     *   hours: up to 13 entries from "now" onwards
+     *          { t, lt, h, tc, ap|null, c|null, d, h1, p|null }
+     * Temperatures are already in the requested unit. Returns null
+     * when the response or the zone conversion is unusable.
+     */
+    function metNormalize(data, zone, unit) {
+        if (!data
+                || !data.properties
+                || !Array.isArray(data.properties.timeseries)) {
+            return null
+        }
+
+        if (!zone || zone === "auto")
+            return null
+
+        var fahrenheit = unit === "fahrenheit"
+        var tz = { zone: zone, offset: null }
+        var series = data.properties.timeseries
+        var samples = []
+
+        for (var i = 0; i < series.length; ++i) {
+            var item = series[i]
+
+            if (!item
+                    || typeof item.time !== "string"
+                    || !item.data) {
+                continue
+            }
+
+            var t = Date.parse(item.time)
+
+            if (!isFinite(t))
+                continue
+
+            var details =
+                item.data.instant
+                && item.data.instant.details
+                ? item.data.instant.details
+                : {}
+
+            var celsius = metNumber(details.air_temperature)
+
+            if (!isFinite(celsius))
+                continue
+
+            var apparent = metNumber(details.apparent_air_temperature)
+
+            var p1 = metPeriod(item.data.next_1_hours)
+            var p6 = metPeriod(item.data.next_6_hours)
+            var p12 = metPeriod(item.data.next_12_hours)
+
+            var probability = p1.probability
+
+            if (!isFinite(probability))
+                probability = p6.probability
+
+            if (!isFinite(probability))
+                probability = p12.probability
+
+            var parts = zonedParts(t, tz)
+
+            if (parts === null)
+                return null
+
+            samples.push({
+                t: t,
+                parts: parts,
+
+                temperature: metTemperature(celsius, fahrenheit),
+
+                apparent:
+                    isFinite(apparent)
+                    ? metTemperature(apparent, fahrenheit)
+                    : NaN,
+
+                uv: metNumber(details.ultraviolet_index_clear_sky),
+
+                hourSymbol: p1.symbol,
+                symbol: p1.symbol || p6.symbol || p12.symbol,
+
+                hourProbability: p1.probability,
+                probability: probability
+            })
+        }
+
+        if (samples.length === 0)
+            return null
+
+        samples.sort(function(a, b) { return a.t - b.t })
+
+        /* Daily groups by LOCATION-LOCAL date. */
+        var groups = {}
+        var order = []
+
+        for (var s = 0; s < samples.length; ++s) {
+            var sample = samples[s]
+            var date = sample.parts.date
+            var group = groups[date]
+
+            if (!group) {
+                group = {
+                    date: date,
+                    max: -Infinity,
+                    min: Infinity,
+                    uv: NaN,
+                    precip: NaN,
+                    code: -1,
+                    codeDistance: Infinity
                 }
 
-                refreshAirQuality(lat, lon)
+                groups[date] = group
+                order.push(date)
+            }
 
-            } catch (e) {
-                hourlyForecast = []
+            group.max = Math.max(group.max, sample.temperature)
+            group.min = Math.min(group.min, sample.temperature)
 
-                errorText =
-                    i18n(
-                        "Respuesta meteorológica inválida"
+            if (isFinite(sample.uv)
+                    && (!isFinite(group.uv) || sample.uv > group.uv)) {
+                group.uv = sample.uv
+            }
+
+            if (isFinite(sample.probability)
+                    && (!isFinite(group.precip)
+                        || sample.probability > group.precip)) {
+                group.precip = sample.probability
+            }
+
+            var code = metSymbolToWeatherCode(sample.symbol)
+
+            if (code >= 0) {
+                var distance =
+                    Math.abs(
+                        sample.parts.hour
+                        + sample.parts.minute / 60
+                        - 12
                     )
 
-                console.log(
-                    "Nostalgia Weather parse error:",
-                    e
+                if (distance < group.codeDistance) {
+                    group.code = code
+                    group.codeDistance = distance
+                }
+            }
+        }
+
+        var days = []
+
+        for (var g = 0; g < order.length; ++g) {
+            var entry = groups[order[g]]
+
+            if (!isFinite(entry.max) || !isFinite(entry.min))
+                continue
+
+            days.push({
+                date: entry.date,
+                code: entry.code,
+                max: entry.max,
+                min: entry.min,
+                precip: isFinite(entry.precip) ? entry.precip : null,
+                uv: isFinite(entry.uv) ? entry.uv : null
+            })
+        }
+
+        if (days.length === 0)
+            return null
+
+        /* "Current" entry and the hours after it. */
+        var nowMs = Date.now()
+        var currentIndex = 0
+
+        for (var n = 0; n < samples.length; ++n) {
+            if (samples[n].t <= nowMs)
+                currentIndex = n
+        }
+
+        var hours = []
+
+        for (
+            var h = currentIndex;
+            h < samples.length && hours.length < 13;
+            ++h
+        ) {
+            var point = samples[h]
+            var currentSymbol = point.symbol
+
+            hours.push({
+                t: point.t,
+
+                lt:
+                    point.parts.date
+                    + "T" + pad2(point.parts.hour)
+                    + ":" + pad2(point.parts.minute),
+
+                h: point.parts.hour,
+                tc: point.temperature,
+
+                ap:
+                    isFinite(point.apparent)
+                    ? point.apparent
+                    : null,
+
+                c:
+                    currentSymbol
+                    ? metSymbolToWeatherCode(currentSymbol)
+                    : null,
+
+                d: metSymbolIsDay(currentSymbol),
+
+                /* The hourly strip needs a real next_1_hours symbol. */
+                h1: point.hourSymbol !== "",
+
+                p:
+                    isFinite(point.hourProbability)
+                    ? point.hourProbability
+                    : null
+            })
+        }
+
+        return { days: days, hours: hours }
+    }
+
+    function metPayloadValid(payload) {
+        return !!payload
+            && Array.isArray(payload.days)
+            && payload.days.length > 0
+            && Array.isArray(payload.hours)
+            && payload.hours.length > 0
+    }
+
+    /*
+     * Normalized payload -> UI result, evaluated against "now" so a
+     * cached payload still yields the right current/hourly entries.
+     */
+    function metBuildResult(payload, zone, lat, lon) {
+        if (!metPayloadValid(payload))
+            return null
+
+        var nowMs = Date.now()
+        var today = zonedParts(nowMs, { zone: zone, offset: null })
+
+        if (today === null)
+            return null
+
+        var days = []
+
+        for (var i = 0; i < payload.days.length; ++i) {
+            var day = payload.days[i]
+
+            if (!day
+                    || typeof day.date !== "string"
+                    || day.date < today.date
+                    || !isFinite(Number(day.max))
+                    || !isFinite(Number(day.min))) {
+                continue
+            }
+
+            days.push({
+                date: day.date,
+                code: Number(day.code),
+                max: Number(day.max),
+                min: Number(day.min),
+                precip: metricNumber(day.precip),
+                uv: metricNumber(day.uv),
+                sunrise: "",
+                sunset: ""
+            })
+        }
+
+        if (days.length === 0)
+            return null
+
+        var hours = payload.hours
+        var current = hours[0]
+
+        for (var n = 0; n < hours.length; ++n) {
+            if (hours[n].t <= nowMs)
+                current = hours[n]
+        }
+
+        var hourly = []
+
+        for (var h = 0; h < hours.length && hourly.length < 6; ++h) {
+            var point = hours[h]
+
+            if (!(point.t > nowMs)
+                    || !point.h1
+                    || point.c === null
+                    || !isFinite(Number(point.tc))) {
+                continue
+            }
+
+            hourly.push({
+                time: point.lt,
+                hour: point.h,
+                code: Number(point.c),
+                temperature: Number(point.tc),
+
+                /* next_1_hours probability only; never a 6 h value. */
+                precipitation: metricNumber(point.p),
+
+                isDay: point.d === true
+            })
+        }
+
+        return {
+            currentTemperature: Number(current.tc),
+
+            apparentTemperature:
+                current.ap === null
+                ? NaN
+                : Number(current.ap),
+
+            currentCode:
+                current.c === null
+                ? -1
+                : Number(current.c),
+
+            currentIsDay: current.d === true,
+
+            forecast: days,
+            hourlyForecast: hourly,
+            forecastLimit: days.length,
+
+            lat: lat,
+            lon: lon
+        }
+    }
+
+    function parseHttpDate(text) {
+        if (!text)
+            return NaN
+
+        var match =
+            /^[A-Za-z]{3}, (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/
+                .exec(String(text).trim())
+
+        if (match) {
+            var month =
+                ["jan", "feb", "mar", "apr", "may", "jun",
+                 "jul", "aug", "sep", "oct", "nov", "dec"]
+                    .indexOf(match[2].toLowerCase())
+
+            if (month >= 0) {
+                return Date.UTC(
+                    Number(match[3]),
+                    month,
+                    Number(match[1]),
+                    Number(match[4]),
+                    Number(match[5]),
+                    Number(match[6])
                 )
             }
         }
 
+        return Date.parse(String(text))
+    }
+
+    /* Expires header, or a conservative 10 minutes when unusable. */
+    function metExpiry(expiresHeader) {
+        var expires = parseHttpDate(expiresHeader)
+
+        if (isFinite(expires) && expires > Date.now())
+            return expires
+
+        return Date.now() + 10 * 60 * 1000
+    }
+
+    function metCacheLoad(key) {
+        metNorwayCacheSettings.sync()
+
+        try {
+            if (decodeURIComponent(
+                    String(metNorwayCacheSettings.value("key", ""))
+                ) !== key) {
+                return null
+            }
+
+            var expires =
+                Number(
+                    metNorwayCacheSettings.value("expiresEpoch", 0)
+                )
+
+            var payload =
+                JSON.parse(
+                    decodeURIComponent(
+                        String(
+                            metNorwayCacheSettings.value("payload", "")
+                        )
+                    )
+                )
+
+            if (!isFinite(expires) || !metPayloadValid(payload))
+                return null
+
+            return {
+                expiresEpoch: expires,
+
+                lastModified:
+                    decodeURIComponent(
+                        String(
+                            metNorwayCacheSettings.value(
+                                "lastModified",
+                                ""
+                            )
+                        )
+                    ),
+
+                payload: payload
+            }
+        } catch (e) {
+            return null
+        }
+    }
+
+    /*
+     * Text values are percent-encoded so commas and quotes in the
+     * HTTP date / JSON cannot be reinterpreted by the ini format.
+     */
+    function metCacheSave(key, expiresEpoch, lastModified, payload) {
+        try {
+            metNorwayCacheSettings.setValue(
+                "key", encodeURIComponent(key)
+            )
+            metNorwayCacheSettings.setValue(
+                "expiresEpoch", expiresEpoch
+            )
+            metNorwayCacheSettings.setValue(
+                "lastModified",
+                encodeURIComponent(lastModified || "")
+            )
+            metNorwayCacheSettings.setValue(
+                "payload",
+                encodeURIComponent(JSON.stringify(payload))
+            )
+
+            metNorwayCacheSettings.sync()
+        } catch (e) {
+            console.log(
+                "Nostalgia Weather MET Norway cache error:",
+                e
+            )
+        }
+    }
+
+    function responseHeader(request, name) {
+        try {
+            return request.getResponseHeader(name) || ""
+        } catch (e) {
+            return ""
+        }
+    }
+
+    function requestMetNorwayWeather(serial, lat, lon) {
+        var latText = metCoordinate(lat)
+        var lonText = metCoordinate(lon)
+        var zone = String(plasmoid.configuration.timezone || "")
+        var unit = root.temperatureUnit
+
+        var key = [latText, lonText, zone, unit].join("|")
+
+        var cached = metCacheLoad(key)
+
+        if (cached !== null) {
+            if (Date.now() < cached.expiresEpoch) {
+                var fresh =
+                    metBuildResult(cached.payload, zone, lat, lon)
+
+                if (fresh !== null) {
+                    applyWeatherResult(serial, "met-norway", fresh)
+                    return
+                }
+
+                /* Unusable payload: ignore it and ask MET. */
+                cached = null
+            }
+        }
+
+        var url =
+            "https://api.met.no/weatherapi/locationforecast/2.0/complete"
+            + "?lat=" + encodeURIComponent(latText)
+            + "&lon=" + encodeURIComponent(lonText)
+
+        var request = new XMLHttpRequest()
+
+        request.onreadystatechange = function() {
+            if (request.readyState !== 4)
+                return
+
+            /* Superseded by a newer refresh: ignore completely. */
+            if (serial !== root.weatherRequestSerial)
+                return
+
+            var status = request.status
+
+            if (status === 304 && cached !== null) {
+                var reused =
+                    root.metBuildResult(
+                        cached.payload,
+                        zone,
+                        lat,
+                        lon
+                    )
+
+                if (reused !== null) {
+                    root.metCacheSave(
+                        key,
+                        root.metExpiry(
+                            root.responseHeader(request, "Expires")
+                        ),
+                        root.responseHeader(request, "Last-Modified")
+                            || cached.lastModified,
+                        cached.payload
+                    )
+
+                    root.applyWeatherResult(
+                        serial,
+                        "met-norway",
+                        reused
+                    )
+
+                    return
+                }
+
+                console.log(
+                    "Nostalgia Weather MET Norway cached payload is invalid"
+                )
+
+                root.failWeather(serial)
+                return
+            }
+
+            if (status !== 200) {
+                console.log(
+                    "Nostalgia Weather MET Norway HTTP error:",
+                    status
+                )
+
+                root.failWeather(serial)
+                return
+            }
+
+            var payload = null
+            var result = null
+
+            try {
+                payload =
+                    root.metNormalize(
+                        JSON.parse(request.responseText),
+                        zone,
+                        unit
+                    )
+
+                if (payload !== null) {
+                    result =
+                        root.metBuildResult(
+                            payload,
+                            zone,
+                            lat,
+                            lon
+                        )
+                }
+            } catch (e) {
+                console.log(
+                    "Nostalgia Weather MET Norway parse error:",
+                    e
+                )
+            }
+
+            if (result === null) {
+                console.log(
+                    "Nostalgia Weather MET Norway response is invalid"
+                )
+
+                root.failWeather(serial)
+                return
+            }
+
+            root.metCacheSave(
+                key,
+                root.metExpiry(
+                    root.responseHeader(request, "Expires")
+                ),
+                root.responseHeader(request, "Last-Modified"),
+                payload
+            )
+
+            root.applyWeatherResult(serial, "met-norway", result)
+        }
+
         request.open("GET", url)
+
+        /* MET Norway requires an identifying User-Agent. */
+        request.setRequestHeader(
+            "User-Agent",
+            "NostalgiaWeather/0.4 (+https://github.com/Karuho/nostalgia-weather)"
+        )
+
+        request.setRequestHeader("Accept", "application/json")
+
+        if (cached !== null && cached.lastModified) {
+            request.setRequestHeader(
+                "If-Modified-Since",
+                cached.lastModified
+            )
+        }
+
         request.send()
     }
 
@@ -1482,6 +2519,9 @@ PlasmoidItem {
     }
 
     onTemperatureUnitChanged:
+        configurationRefreshTimer.restart()
+
+    onWeatherProviderChanged:
         configurationRefreshTimer.restart()
 
     onConfiguredLocationNameChanged:
@@ -1581,7 +2621,8 @@ PlasmoidItem {
         readonly property int visibleDays:
             Math.min(
                 requestedDays,
-                adaptiveCapacity
+                adaptiveCapacity,
+                root.forecastProviderLimit
             )
 
         readonly property bool extendedForecast:
@@ -2253,9 +3294,9 @@ PlasmoidItem {
                                 enabled:
                                     plasmoid.configuration.showPrecipitation,
                                 value:
-                                    Math.round(
+                                    root.percentText(
                                         root.today.precip
-                                    ) + "%",
+                                    ),
                                 tooltip:
                                     i18n(
                                         "Probabilidad de precipitación hoy"
@@ -2267,10 +3308,9 @@ PlasmoidItem {
                                 enabled:
                                     plasmoid.configuration.showUv,
                                 value:
-                                    "UV "
-                                    + Number(
+                                    root.uvText(
                                         root.today.uv
-                                    ).toFixed(1),
+                                    ),
                                 tooltip:
                                     i18n(
                                         "Índice UV máximo de hoy"
@@ -3087,17 +4127,24 @@ PlasmoidItem {
                                     day.precipUnit === "mm"
                                     ? (
                                         "☂ "
-                                        + Number(
-                                            day.precip
-                                        ).toFixed(1)
-                                        + " mm"
+                                        + (
+                                            isNaN(
+                                                root.metricNumber(
+                                                    day.precip
+                                                )
+                                            )
+                                            ? "--"
+                                            : Number(
+                                                day.precip
+                                            ).toFixed(1)
+                                              + " mm"
+                                        )
                                     )
                                     : (
                                         "☂ "
-                                        + Math.round(
+                                        + root.percentText(
                                             day.precip
                                         )
-                                        + "%"
                                     )
 
                                 color: theme.dailySecondaryText

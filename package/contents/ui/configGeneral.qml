@@ -35,6 +35,8 @@ Item {
     property string cfg_visualTheme:
         "classic"
 
+    property string cfg_weatherProvider: "auto"
+
     property int cfg_forecastDays:
         7
 
@@ -94,6 +96,8 @@ Item {
     property string cfg_visualThemeDefault:
         "classic"
 
+    property string cfg_weatherProviderDefault: "auto"
+
     property int cfg_updateMinutesDefault: 30
     property int cfg_forecastDaysDefault: 7
 
@@ -146,6 +150,12 @@ Item {
         "frutiger-aero",
         "rose-quartz",
         "astral-nebula"
+    ]
+
+    readonly property var providerValues: [
+        "auto",
+        "open-meteo",
+        "met-norway"
     ]
 
     readonly property var dayValues: [
@@ -1112,6 +1122,53 @@ Item {
                         "Forecast",
                         "Pronóstico"
                     )
+            }
+
+            QQC2.ComboBox {
+                Kirigami.FormData.label:
+                    page.tx(
+                        "Weather provider:",
+                        "Proveedor del clima:"
+                    )
+
+                model: [
+                    page.tx("Automatic", "Automático"),
+                    page.tx("Open-Meteo", "Open-Meteo"),
+                    page.tx("MET Norway", "MET Norway")
+                ]
+
+                currentIndex:
+                    Math.max(
+                        0,
+                        page.providerValues.indexOf(
+                            page.cfg_weatherProvider
+                        )
+                    )
+
+                onActivated:
+                    page.cfg_weatherProvider =
+                        page.providerValues[
+                            currentIndex
+                        ]
+            }
+
+            QQC2.Label {
+                visible:
+                    page.cfg_weatherProvider === "auto"
+                    || page.cfg_weatherProvider === "met-norway"
+
+                text:
+                    page.tx(
+                        "Weather data fallback provided by MET Norway · CC BY 4.0",
+                        "Datos meteorológicos de respaldo proporcionados por MET Norway · CC BY 4.0"
+                    )
+
+                font:
+                    Kirigami.Theme.smallFont
+
+                color:
+                    Kirigami.Theme
+                        .disabledTextColor
             }
 
             QQC2.ComboBox {
