@@ -118,6 +118,19 @@ Item {
      */
     property int searchSerial: 0
 
+    /*
+     * Estado de la resolución de "Usar ubicación actual".
+     * currentSerial descarta respuestas de una solicitud anterior.
+     */
+    property int currentSerial: 0
+    property bool currentResolving: false
+    property bool currentTimezoneDone: false
+    property bool currentPlaceDone: false
+    property string currentTimezone: ""
+    property string currentPlace: ""
+    property real currentLat: 0
+    property real currentLon: 0
+
     readonly property var dayValues: [
         3,
         5,
@@ -212,12 +225,38 @@ Item {
             )
     }
 
+    function joinUnique(values) {
+        var parts = []
+
+        for (var v = 0; v < values.length; ++v) {
+            var value = values[v]
+
+            if (!value)
+                continue
+
+            var duplicate = false
+
+            for (var i = 0; i < parts.length; ++i) {
+                if (parts[i] === value) {
+                    duplicate = true
+                    break
+                }
+            }
+
+            if (!duplicate)
+                parts.push(value)
+        }
+
+        return parts.join(", ")
+    }
+
+    /*
+     * Returns "" when no human-readable place can be built;
+     * the caller decides on the localized final fallback.
+     */
     function detectedPlaceLabel(properties) {
         if (!properties)
-            return tx(
-                "Current location",
-                "Ubicación actual"
-            )
+            return ""
 
         var primary =
             properties.city
@@ -227,38 +266,31 @@ Item {
             || properties.name
             || ""
 
-        var state =
-            properties.state || ""
-
-        var country =
+        return joinUnique([
+            primary,
+            properties.state || "",
             properties.country || ""
+        ])
+    }
 
-        var parts = []
+    function bigDataCloudPlaceLabel(data) {
+        if (!data)
+            return ""
 
-        function appendUnique(value) {
-            if (!value)
-                return
+        /*
+         * Prefer city over locality to avoid overly granular
+         * suburb names.
+         */
+        var settlement =
+            data.city
+            || data.locality
+            || ""
 
-            for (var i = 0; i < parts.length; ++i) {
-                if (parts[i] === value)
-                    return
-            }
-
-            parts.push(value)
-        }
-
-        appendUnique(primary)
-        appendUnique(state)
-        appendUnique(country)
-
-        if (parts.length === 0) {
-            return tx(
-                "Current location",
-                "Ubicación actual"
-            )
-        }
-
-        return parts.join(", ")
+        return joinUnique([
+            settlement,
+            data.principalSubdivision || "",
+            data.countryName || ""
+        ])
     }
 
     function applyDetectedLocation(
@@ -273,8 +305,11 @@ Item {
         longitude.text =
             Number(lon).toFixed(6)
 
-        cfg_timezone =
-            timezone || "UTC"
+        /*
+         * Keep the current time zone if it could not be resolved.
+         */
+        if (timezone)
+            cfg_timezone = timezone
 
         locationName.text =
             label
@@ -288,17 +323,153 @@ Item {
 
         locatingCurrent = false
 
-        currentLocationMessage =
-            tx(
-                "Location detected. Press Apply to save it.",
-                "Ubicación detectada. Pulsa Aplicar para guardarla."
+        if (timezone) {
+            currentLocationMessage =
+                tx(
+                    "Location detected. Press Apply to save it.",
+                    "Ubicación detectada. Pulsa Aplicar para guardarla."
+                )
+        } else {
+            currentLocationMessage =
+                tx(
+                    "Could not determine the current time zone.",
+                    "No se pudo determinar la zona horaria actual."
+                )
+        }
+    }
+
+    /*
+     * Current-location resolution. The place name and the time
+     * zone are requested independently and combined here once
+     * both have completed (or the watchdog fires). currentSerial
+     * discards replies belonging to an older request.
+     */
+    function startCurrentResolution(lat, lon) {
+        var serial = ++currentSerial
+
+        currentResolving = true
+        currentTimezoneDone = false
+        currentPlaceDone = false
+        currentTimezone = ""
+        currentPlace = ""
+        currentLat = lat
+        currentLon = lon
+
+        currentResolveTimer.restart()
+
+        resolveCurrentTimezone(serial, lat, lon)
+        reverseCurrentLocation(serial, lat, lon)
+    }
+
+    function maybeFinishCurrent(serial, force) {
+        if (serial !== currentSerial || !currentResolving)
+            return
+
+        if (!force
+                && !(currentTimezoneDone && currentPlaceDone)) {
+            return
+        }
+
+        currentResolving = false
+        currentResolveTimer.stop()
+
+        var label = currentPlace
+
+        if (!label) {
+            label = tx(
+                "Current location",
+                "Ubicación actual"
             )
+        }
+
+        applyDetectedLocation(
+            currentLat,
+            currentLon,
+            currentTimezone,
+            label
+        )
+    }
+
+    function completeCurrentTimezone(serial, timezone) {
+        if (serial !== currentSerial
+                || !currentResolving
+                || currentTimezoneDone) {
+            return
+        }
+
+        currentTimezoneDone = true
+        currentTimezone = timezone || ""
+
+        maybeFinishCurrent(serial, false)
+    }
+
+    function completeCurrentPlace(serial, label) {
+        if (serial !== currentSerial
+                || !currentResolving
+                || currentPlaceDone) {
+            return
+        }
+
+        currentPlaceDone = true
+        currentPlace = label || ""
+
+        maybeFinishCurrent(serial, false)
+    }
+
+    /*
+     * GET a JSON document. callback receives the parsed data,
+     * or null on any HTTP/network/parse failure; it is called
+     * exactly once.
+     */
+    function fetchJson(url, callback) {
+        var request =
+            new XMLHttpRequest()
+
+        request.onreadystatechange =
+            function() {
+
+            if (request.readyState !== 4)
+                return
+
+            if (request.status !== 200) {
+                console.log(
+                    "Nostalgia Weather HTTP error:",
+                    request.status,
+                    url
+                )
+
+                callback(null)
+                return
+            }
+
+            var data = null
+
+            try {
+                data = JSON.parse(
+                    request.responseText
+                )
+            } catch (e) {
+                console.log(
+                    "Nostalgia Weather parse error:",
+                    e
+                )
+            }
+
+            callback(data)
+        }
+
+        request.open(
+            "GET",
+            url
+        )
+
+        request.send()
     }
 
     function reverseCurrentLocation(
+        serial,
         lat,
-        lon,
-        timezone
+        lon
     ) {
         var language =
             I18n.geocodingLanguage(
@@ -315,95 +486,74 @@ Item {
             + "&lang="
             + encodeURIComponent(language)
 
-        var request =
-            new XMLHttpRequest()
-
-        request.onreadystatechange =
-            function() {
-
-            if (request.readyState !== 4)
+        fetchJson(url, function(data) {
+            if (serial !== currentSerial || !currentResolving)
                 return
 
-            var fallback =
-                tx(
-                    "Current location",
-                    "Ubicación actual"
-                )
+            var label = ""
 
-            if (request.status !== 200) {
-                console.log(
-                    "Nostalgia Weather reverse geocoding HTTP error:",
-                    request.status
-                )
-
-                applyDetectedLocation(
-                    lat,
-                    lon,
-                    timezone,
-                    fallback
-                )
-
-                return
-            }
-
-            try {
-                var data =
-                    JSON.parse(
-                        request.responseText
-                    )
-
-                if (!data.features
-                        || data.features.length === 0) {
-
-                    applyDetectedLocation(
-                        lat,
-                        lon,
-                        timezone,
-                        fallback
-                    )
-
-                    return
-                }
-
-                var properties =
+            if (data
+                    && data.features
+                    && data.features.length > 0) {
+                label = detectedPlaceLabel(
                     data.features[0].properties
-
-                var label =
-                    detectedPlaceLabel(
-                        properties
-                    )
-
-                applyDetectedLocation(
-                    lat,
-                    lon,
-                    timezone,
-                    label
-                )
-
-            } catch (e) {
-                console.log(
-                    "Nostalgia Weather reverse geocoding parse error:",
-                    e
-                )
-
-                applyDetectedLocation(
-                    lat,
-                    lon,
-                    timezone,
-                    fallback
                 )
             }
-        }
 
-        request.open(
-            "GET",
-            url
-        )
+            if (label) {
+                completeCurrentPlace(serial, label)
+                return
+            }
 
-        request.send()
+            /*
+             * Photon failed or returned nothing:
+             * one fallback request, only for this explicit action.
+             */
+            reverseCurrentLocationBigDataCloud(
+                serial,
+                lat,
+                lon,
+                language
+            )
+        })
     }
 
-    function resolveCurrentTimezone(lat, lon) {
+    /*
+     * BigDataCloud free client-side reverse geocoder. Valid only
+     * for coordinates obtained with user consent on this same
+     * device, which is exactly the explicit current-location flow.
+     */
+    function reverseCurrentLocationBigDataCloud(
+        serial,
+        lat,
+        lon,
+        language
+    ) {
+        if (serial !== currentSerial || !currentResolving)
+            return
+
+        var url =
+            "https://api.bigdatacloud.net/data/reverse-geocode-client"
+            + "?latitude="
+            + encodeURIComponent(lat)
+            + "&longitude="
+            + encodeURIComponent(lon)
+            + "&localityLanguage="
+            + encodeURIComponent(language)
+
+        fetchJson(url, function(data) {
+            completeCurrentPlace(
+                serial,
+                bigDataCloudPlaceLabel(data)
+            )
+        })
+    }
+
+    function resolveCurrentTimezone(
+        serial,
+        lat,
+        lon
+    ) {
         var url =
             "https://api.open-meteo.com/v1/forecast"
             + "?latitude="
@@ -414,72 +564,14 @@ Item {
             + "&timezone=auto"
             + "&forecast_days=1"
 
-        var request =
-            new XMLHttpRequest()
-
-        request.onreadystatechange =
-            function() {
-
-            if (request.readyState !== 4)
-                return
-
-            if (request.status !== 200) {
-                locatingCurrent = false
-
-                currentLocationMessage =
-                    tx(
-                        "Could not determine the current time zone.",
-                        "No se pudo determinar la zona horaria actual."
-                    )
-
-                return
-            }
-
-            try {
-                var data =
-                    JSON.parse(
-                        request.responseText
-                    )
-
-                if (!data.timezone) {
-                    locatingCurrent = false
-
-                    currentLocationMessage =
-                        tx(
-                            "Could not determine the current time zone.",
-                            "No se pudo determinar la zona horaria actual."
-                        )
-
-                    return
-                }
-
-                /*
-                 * Timezone resolved.
-                 * Now obtain the human-readable location.
-                 */
-                reverseCurrentLocation(
-                    lat,
-                    lon,
-                    data.timezone
-                )
-
-            } catch (e) {
-                locatingCurrent = false
-
-                currentLocationMessage =
-                    tx(
-                        "Could not determine the current time zone.",
-                        "No se pudo determinar la zona horaria actual."
-                    )
-            }
-        }
-
-        request.open(
-            "GET",
-            url
-        )
-
-        request.send()
+        fetchJson(url, function(data) {
+            completeCurrentTimezone(
+                serial,
+                data && data.timezone
+                    ? data.timezone
+                    : ""
+            )
+        })
     }
 
 
@@ -641,6 +733,23 @@ Item {
             page.searchLocations()
     }
 
+    /*
+     * Watchdog: never leave the UI busy if a request hangs.
+     * Applies whatever has been resolved so far.
+     */
+    Timer {
+        id: currentResolveTimer
+
+        interval: 25000
+        repeat: false
+
+        onTriggered:
+            page.maybeFinishCurrent(
+                page.currentSerial,
+                true
+            )
+    }
+
     Component.onCompleted: {
         locationSearch.text =
             locationName.text
@@ -650,9 +759,9 @@ Item {
         id: currentLocation
 
         onPositionReady:
-            function(latitudeValue, longitudeValue) {
+            function(latitudeValue, longitudeValue, accuracy) {
 
-            page.resolveCurrentTimezone(
+            page.startCurrentResolution(
                 latitudeValue,
                 longitudeValue
             )
