@@ -894,6 +894,58 @@ var strings = {
         ru: "Почасовой прогноз"
     },
 
+    "Appearance": {
+        es: "Apariencia",
+        pt: "Aparência",
+        fr: "Apparence",
+        de: "Erscheinungsbild",
+        it: "Aspetto",
+        ja: "外観",
+        "zh-CN": "外观",
+        "zh-TW": "外觀",
+        ko: "모양",
+        ru: "Оформление"
+    },
+
+    "Theme:": {
+        es: "Tema:",
+        pt: "Tema:",
+        fr: "Thème :",
+        de: "Design:",
+        it: "Tema:",
+        ja: "テーマ:",
+        "zh-CN": "主题：",
+        "zh-TW": "主題：",
+        ko: "테마:",
+        ru: "Тема:"
+    },
+
+    "Windows 7 Classic": {
+        es: "Windows 7 Clásico",
+        pt: "Windows 7 Clássico",
+        fr: "Windows 7 Classique",
+        de: "Windows 7 Klassisch",
+        it: "Windows 7 Classico",
+        ja: "Windows 7 クラシック",
+        "zh-CN": "Windows 7 经典",
+        "zh-TW": "Windows 7 經典",
+        ko: "Windows 7 클래식",
+        ru: "Windows 7 Классический"
+    },
+
+    "Frutiger Aero": {
+        es: "Frutiger Aero",
+        pt: "Frutiger Aero",
+        fr: "Frutiger Aero",
+        de: "Frutiger Aero",
+        it: "Frutiger Aero",
+        ja: "Frutiger Aero",
+        "zh-CN": "Frutiger Aero",
+        "zh-TW": "Frutiger Aero",
+        ko: "Frutiger Aero",
+        ru: "Frutiger Aero"
+    },
+
     "hrs": {
         es: "hrs",
         pt: "h",

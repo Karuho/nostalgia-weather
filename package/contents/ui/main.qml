@@ -44,6 +44,9 @@ PlasmoidItem {
     readonly property string uiLanguage:
         plasmoid.configuration.language || "en"
 
+    readonly property string visualTheme:
+        plasmoid.configuration.visualTheme || "classic"
+
     readonly property string temperatureUnit:
         plasmoid.configuration.temperatureUnit
         || "celsius"
@@ -106,6 +109,69 @@ PlasmoidItem {
                 StandardPaths.GenericConfigLocation
             )
             + "/nostalgia-weather.conf"
+    }
+
+    /*
+     * VISUAL THEME TOKENS
+     *
+     * Every theme-dependent presentation value lives here.
+     * "classic" (Windows 7) keeps the original literals untouched;
+     * any unknown theme id falls back to it. Semantic weather
+     * colors (UV, AQI, sunrise/sunset accents) are not themed.
+     */
+    QtObject {
+        id: theme
+
+        readonly property bool aero:
+            root.visualTheme === "frutiger-aero"
+
+        readonly property color cardBorder:
+            aero ? "#b0ffffff" : "#80ffffff"
+
+        readonly property color cardGradientTop:
+            aero ? "#c83aa8e8" : "#c05a6a78"
+
+        readonly property color cardGradientMiddle:
+            aero ? "#c81c6fc2" : "#c0334352"
+
+        readonly property color cardGradientBottom:
+            aero ? "#d2158f6a" : "#dc15232f"
+
+        readonly property color cardTopGloss:
+            aero ? "#30ffffff" : "#18ffffff"
+
+        readonly property color divider:
+            aero ? "#70ffffff" : "#45ffffff"
+
+        readonly property color primaryText:
+            "white"
+
+        readonly property color secondaryText:
+            aero ? "#f4ffffff" : "#e4ffffff"
+
+        readonly property color mutedText:
+            aero ? "#dcffffff" : "#bfffffff"
+
+        readonly property color dateText:
+            aero ? "#f6ffffff" : "#e8ffffff"
+
+        readonly property color metricText:
+            aero ? "#f8ffffff" : "#f0ffffff"
+
+        readonly property color airMetricText:
+            aero ? "#f6ffffff" : "#eaffffff"
+
+        readonly property color dailyPrimaryText:
+            aero ? "#f8ffffff" : "#efffffff"
+
+        readonly property color dailySecondaryText:
+            aero ? "#e6ffffff" : "#cfffffff"
+
+        readonly property color hourlyPrimaryText:
+            aero ? "#f8ffffff" : "#efffffff"
+
+        readonly property color hourlySecondaryText:
+            aero ? "#e6ffffff" : "#cfffffff"
     }
 
     function tx(en, es) {
@@ -1388,22 +1454,22 @@ PlasmoidItem {
             )
 
             border.width: 1
-            border.color: "#80ffffff"
+            border.color: theme.cardBorder
 
             gradient: Gradient {
                 GradientStop {
                     position: 0.0
-                    color: "#c05a6a78"
+                    color: theme.cardGradientTop
                 }
 
                 GradientStop {
                     position: 0.42
-                    color: "#c0334352"
+                    color: theme.cardGradientMiddle
                 }
 
                 GradientStop {
                     position: 1.0
-                    color: "#dc15232f"
+                    color: theme.cardGradientBottom
                 }
             }
         }
@@ -1419,7 +1485,7 @@ PlasmoidItem {
             height: parent.height * 0.35
             radius: 12
 
-            color: "#18ffffff"
+            color: theme.cardTopGloss
         }
 
         ColumnLayout {
@@ -1448,7 +1514,7 @@ PlasmoidItem {
                           )
                         : ""
 
-                    color: "#e8ffffff"
+                    color: theme.dateText
 
                     font.pixelSize:
                         Math.max(
@@ -1508,7 +1574,7 @@ PlasmoidItem {
 
                         text: root.locationName
 
-                        color: "white"
+                        color: theme.primaryText
 
                         font.bold: true
 
@@ -1530,7 +1596,7 @@ PlasmoidItem {
                                 root.currentCode
                             )
 
-                        color: "#e4ffffff"
+                        color: theme.secondaryText
 
                         font.pixelSize: 12
                     }
@@ -1550,7 +1616,7 @@ PlasmoidItem {
                             )
                             + "°"
 
-                        color: "#bfffffff"
+                        color: theme.mutedText
                         font.pixelSize: 10
                     }
                 }
@@ -1591,7 +1657,7 @@ PlasmoidItem {
                               : "°C"
                           )
 
-                    color: "white"
+                    color: theme.primaryText
 
                     font.bold: true
 
@@ -1739,7 +1805,7 @@ PlasmoidItem {
                             PlasmaComponents.Label {
                                 text: modelData.value
 
-                                color: "#f0ffffff"
+                                color: theme.metricText
 
                                 font.pixelSize:
                                     Math.max(
@@ -1970,7 +2036,7 @@ PlasmoidItem {
                                           card.width / 3 - 32
                                       )
 
-                                color: "#eaffffff"
+                                color: theme.airMetricText
 
                                 font.pixelSize:
                                     Math.max(
@@ -2115,7 +2181,7 @@ PlasmoidItem {
                                             + " "
                                             + root.tx("hrs", "hrs")
 
-                                        color: "#efffffff"
+                                        color: theme.hourlyPrimaryText
 
                                         font.bold: true
 
@@ -2159,7 +2225,7 @@ PlasmoidItem {
                                             )
                                             + "°"
 
-                                        color: "white"
+                                        color: theme.primaryText
 
                                         font.pixelSize:
                                             hourlyStrip.tempFont
@@ -2190,7 +2256,7 @@ PlasmoidItem {
                                                 : "--"
                                             )
 
-                                        color: "#cfffffff"
+                                        color: theme.hourlySecondaryText
 
                                         font.pixelSize:
                                             hourlyStrip.precipFont
@@ -2223,7 +2289,7 @@ PlasmoidItem {
                                             + " "
                                             + root.tx("hrs", "hrs")
 
-                                        color: "#efffffff"
+                                        color: theme.hourlyPrimaryText
 
                                         font.bold: true
                                         font.pixelSize: 9
@@ -2263,7 +2329,7 @@ PlasmoidItem {
                                                 )
                                                 + "°"
 
-                                            color: "white"
+                                            color: theme.primaryText
 
                                             font.pixelSize: 9
 
@@ -2284,7 +2350,7 @@ PlasmoidItem {
                                                     : "--"
                                                 )
 
-                                            color: "#cfffffff"
+                                            color: theme.hourlySecondaryText
 
                                             font.pixelSize: 8
 
@@ -2302,7 +2368,7 @@ PlasmoidItem {
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
-                color: "#45ffffff"
+                color: theme.divider
             }
 
             GridLayout {
@@ -2386,7 +2452,7 @@ PlasmoidItem {
                                         index
                                     )
 
-                                color: "#efffffff"
+                                color: theme.dailyPrimaryText
 
                                 font.bold:
                                     index === 0
@@ -2410,7 +2476,7 @@ PlasmoidItem {
                                         day.date
                                     )
 
-                                color: "#bfffffff"
+                                color: theme.mutedText
 
                                 font.pixelSize:
                                     Math.max(
@@ -2459,7 +2525,7 @@ PlasmoidItem {
                                     )
                                     + "°"
 
-                                color: "white"
+                                color: theme.primaryText
 
                                 font.pixelSize:
                                     Math.max(
@@ -2496,7 +2562,7 @@ PlasmoidItem {
                                         + "%"
                                     )
 
-                                color: "#cfffffff"
+                                color: theme.dailySecondaryText
 
                                 font.pixelSize:
                                     Math.max(
