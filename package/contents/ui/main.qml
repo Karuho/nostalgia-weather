@@ -125,23 +125,47 @@ PlasmoidItem {
         readonly property bool aero:
             root.visualTheme === "frutiger-aero"
 
+        readonly property bool rose:
+            root.visualTheme === "rose-quartz"
+
+        readonly property bool astral:
+            root.visualTheme === "astral-nebula"
+
         readonly property color cardBorder:
-            aero ? "#b0ffffff" : "#80ffffff"
+            aero ? "#b0ffffff"
+            : rose ? "#c8ffe2f2"
+            : astral ? "#a0d4ccff"
+            : "#80ffffff"
 
         readonly property color cardGradientTop:
-            aero ? "#c83aa8e8" : "#c05a6a78"
+            aero ? "#c83aa8e8"
+            : rose ? "#c8e698c8"
+            : astral ? "#d03a44a8"
+            : "#c05a6a78"
 
         readonly property color cardGradientMiddle:
-            aero ? "#c81c6fc2" : "#c0334352"
+            aero ? "#c81c6fc2"
+            : rose ? "#c8c4409a"
+            : astral ? "#d05a2cb0"
+            : "#c0334352"
 
         readonly property color cardGradientBottom:
-            aero ? "#d2158f6a" : "#dc15232f"
+            aero ? "#d2158f6a"
+            : rose ? "#d2764096"
+            : astral ? "#e01c1a5c"
+            : "#dc15232f"
 
         readonly property color cardTopGloss:
-            aero ? "#30ffffff" : "#18ffffff"
+            aero ? "#30ffffff"
+            : rose ? "#34fff0f8"
+            : astral ? "#20c4ccff"
+            : "#18ffffff"
 
         readonly property color divider:
-            aero ? "#70ffffff" : "#45ffffff"
+            aero ? "#70ffffff"
+            : rose ? "#78ffe6f2"
+            : astral ? "#58d6ceff"
+            : "#45ffffff"
 
         /*
          * Frutiger Aero decorative layers only. These are never
@@ -174,35 +198,149 @@ PlasmoidItem {
         readonly property color aeroSpecularSoft:
             "#08ffffff"
 
+        /*
+         * Rose Quartz decorative layers only. Never shown unless
+         * rose-quartz is active.
+         */
+        readonly property color roseBloomTop:
+            "#52ffd6ee"
+
+        readonly property color roseBloomBottom:
+            "#00ff9ed4"
+
+        readonly property color rosePearlTop:
+            "#00fff0f8"
+
+        readonly property color rosePearlCenter:
+            "#40fff2f9"
+
+        readonly property color rosePearlBottom:
+            "#00fff0f8"
+
+        readonly property color roseLowerGlowTop:
+            "#00b890ff"
+
+        readonly property color roseLowerGlowBottom:
+            "#5ce070bc"
+
+        readonly property color roseSpecular:
+            "#3cfff6fb"
+
+        readonly property color roseSpecularSoft:
+            "#0affe6f4"
+
+        /*
+         * Astral Nebula decorative layers only. Never shown unless
+         * astral-nebula is active.
+         */
+        readonly property color astralNebulaTop:
+            "#4c7a70ff"
+
+        readonly property color astralNebulaBottom:
+            "#006a64ff"
+
+        readonly property color astralHorizonTop:
+            "#00b45cff"
+
+        readonly property color astralHorizonCenter:
+            "#40b860ff"
+
+        readonly property color astralHorizonBottom:
+            "#00b45cff"
+
+        readonly property color astralAtmosphereTop:
+            "#001a1a5c"
+
+        readonly property color astralAtmosphereBottom:
+            "#68080838"
+
+        readonly property color astralSpecular:
+            "#2ac8d2ff"
+
+        readonly property color astralSpecularSoft:
+            "#06c8d2ff"
+
+        readonly property color astralStar:
+            "#a8eef0ff"
+
+        readonly property color astralStarDim:
+            "#58c8d0ff"
+
+        /*
+         * Static star field: [x fraction, y fraction, size px,
+         * bright]. Positions scale with the card; no randomness.
+         */
+        readonly property var astralStars: [
+            [0.08, 0.10, 2, true],
+            [0.22, 0.05, 1.5, false],
+            [0.47, 0.13, 1.5, false],
+            [0.71, 0.06, 2, true],
+            [0.90, 0.16, 1.5, false],
+            [0.95, 0.42, 2, true],
+            [0.04, 0.55, 1.5, false],
+            [0.62, 0.50, 1.5, false],
+            [0.15, 0.88, 2, true],
+            [0.38, 0.93, 1.5, false],
+            [0.80, 0.84, 1.5, false],
+            [0.93, 0.94, 2, false]
+        ]
+
         readonly property color primaryText:
             "white"
 
         readonly property color secondaryText:
-            aero ? "#f4ffffff" : "#e4ffffff"
+            aero ? "#f4ffffff"
+            : rose ? "#f8fff6fb"
+            : astral ? "#f4f2eeff"
+            : "#e4ffffff"
 
         readonly property color mutedText:
-            aero ? "#dcffffff" : "#bfffffff"
+            aero ? "#dcffffff"
+            : rose ? "#e6ffeef7"
+            : astral ? "#d8e0daff"
+            : "#bfffffff"
 
         readonly property color dateText:
-            aero ? "#f6ffffff" : "#e8ffffff"
+            aero ? "#f6ffffff"
+            : rose ? "#fafff6fb"
+            : astral ? "#f6f2eeff"
+            : "#e8ffffff"
 
         readonly property color metricText:
-            aero ? "#f8ffffff" : "#f0ffffff"
+            aero ? "#f8ffffff"
+            : rose ? "#fafff8fc"
+            : astral ? "#f8f4f0ff"
+            : "#f0ffffff"
 
         readonly property color airMetricText:
-            aero ? "#f6ffffff" : "#eaffffff"
+            aero ? "#f6ffffff"
+            : rose ? "#f8fff6fb"
+            : astral ? "#f4f0ecff"
+            : "#eaffffff"
 
         readonly property color dailyPrimaryText:
-            aero ? "#f8ffffff" : "#efffffff"
+            aero ? "#f8ffffff"
+            : rose ? "#fafff8fc"
+            : astral ? "#f8f4f0ff"
+            : "#efffffff"
 
         readonly property color dailySecondaryText:
-            aero ? "#e6ffffff" : "#cfffffff"
+            aero ? "#e6ffffff"
+            : rose ? "#eafff0f8"
+            : astral ? "#e0e6e0ff"
+            : "#cfffffff"
 
         readonly property color hourlyPrimaryText:
-            aero ? "#f8ffffff" : "#efffffff"
+            aero ? "#f8ffffff"
+            : rose ? "#fafff8fc"
+            : astral ? "#f8f4f0ff"
+            : "#efffffff"
 
         readonly property color hourlySecondaryText:
-            aero ? "#e6ffffff" : "#cfffffff"
+            aero ? "#e6ffffff"
+            : rose ? "#eafff0f8"
+            : astral ? "#e0e6e0ff"
+            : "#cfffffff"
     }
 
     function tx(en, es) {
@@ -1616,6 +1754,260 @@ PlasmoidItem {
                 GradientStop {
                     position: 1.0
                     color: theme.aeroSpecularSoft
+                }
+            }
+        }
+
+        // Rose Quartz soft pink upper bloom
+        Rectangle {
+            visible: theme.rose
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                margins: 1
+            }
+
+            height: parent.height * 0.32
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.roseBloomTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.roseBloomBottom
+                }
+            }
+        }
+
+        // Rose Quartz pearlescent central glow
+        Rectangle {
+            visible: theme.rose
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                margins: 1
+            }
+
+            y: parent.height * 0.40
+            height: parent.height * 0.16
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.rosePearlTop
+                }
+
+                GradientStop {
+                    position: 0.5
+                    color: theme.rosePearlCenter
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.rosePearlBottom
+                }
+            }
+        }
+
+        // Rose Quartz lavender / rose lower glow
+        Rectangle {
+            visible: theme.rose
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: 1
+            }
+
+            height: parent.height * 0.32
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.roseLowerGlowTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.roseLowerGlowBottom
+                }
+            }
+        }
+
+        // Rose Quartz glossy specular highlight
+        Rectangle {
+            visible: theme.rose
+
+            x: parent.width * 0.05
+            y: parent.height * 0.035
+            width: parent.width * 0.58
+            height: parent.height * 0.13
+
+            radius: height / 2
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.roseSpecular
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.roseSpecularSoft
+                }
+            }
+        }
+
+        // Astral Nebula violet / blue upper nebula glow
+        Rectangle {
+            visible: theme.astral
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                margins: 1
+            }
+
+            height: parent.height * 0.34
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.astralNebulaTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.astralNebulaBottom
+                }
+            }
+        }
+
+        // Astral Nebula electric-purple horizon glow
+        Rectangle {
+            visible: theme.astral
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                margins: 1
+            }
+
+            y: parent.height * 0.42
+            height: parent.height * 0.14
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.astralHorizonTop
+                }
+
+                GradientStop {
+                    position: 0.5
+                    color: theme.astralHorizonCenter
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.astralHorizonBottom
+                }
+            }
+        }
+
+        // Astral Nebula deep indigo lower atmosphere
+        Rectangle {
+            visible: theme.astral
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: 1
+            }
+
+            height: parent.height * 0.34
+            radius: Math.max(
+                7,
+                Math.min(13, parent.width / 28)
+            )
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.astralAtmosphereTop
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.astralAtmosphereBottom
+                }
+            }
+        }
+
+        // Astral Nebula static star field
+        Item {
+            visible: theme.astral
+
+            anchors.fill: parent
+
+            Repeater {
+                model: theme.astralStars
+
+                Rectangle {
+                    width: modelData[2]
+                    height: modelData[2]
+                    radius: width / 2
+
+                    x: parent.width * modelData[0] - width / 2
+                    y: parent.height * modelData[1] - height / 2
+
+                    color: modelData[3]
+                        ? theme.astralStar
+                        : theme.astralStarDim
+                }
+            }
+        }
+
+        // Astral Nebula specular glass highlight
+        Rectangle {
+            visible: theme.astral
+
+            x: parent.width * 0.05
+            y: parent.height * 0.035
+            width: parent.width * 0.56
+            height: parent.height * 0.12
+
+            radius: height / 2
+
+            gradient: Gradient {
+                GradientStop {
+                    position: 0.0
+                    color: theme.astralSpecular
+                }
+
+                GradientStop {
+                    position: 1.0
+                    color: theme.astralSpecularSoft
                 }
             }
         }

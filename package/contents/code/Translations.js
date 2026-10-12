@@ -946,6 +946,32 @@ var strings = {
         ru: "Frutiger Aero"
     },
 
+    "Rose Quartz": {
+        es: "Cuarzo Rosa",
+        pt: "Quartzo Rosa",
+        fr: "Quartz Rose",
+        de: "Rosenquarz",
+        it: "Quarzo Rosa",
+        ja: "ローズクォーツ",
+        "zh-CN": "玫瑰石英",
+        "zh-TW": "玫瑰石英",
+        ko: "로즈 쿼츠",
+        ru: "Розовый кварц"
+    },
+
+    "Astral Nebula": {
+        es: "Nebulosa Astral",
+        pt: "Nebulosa Astral",
+        fr: "Nébuleuse Astrale",
+        de: "Astraler Nebel",
+        it: "Nebulosa Astrale",
+        ja: "アストラル星雲",
+        "zh-CN": "星界星云",
+        "zh-TW": "星界星雲",
+        ko: "아스트랄 성운",
+        ru: "Астральная туманность"
+    },
+
     "hrs": {
         es: "hrs",
         pt: "h",

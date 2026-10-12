@@ -143,7 +143,9 @@ Item {
 
     readonly property var themeValues: [
         "classic",
-        "frutiger-aero"
+        "frutiger-aero",
+        "rose-quartz",
+        "astral-nebula"
     ]
 
     readonly property var dayValues: [
@@ -1275,6 +1277,14 @@ Item {
                     page.tx(
                         "Frutiger Aero",
                         "Frutiger Aero"
+                    ),
+                    page.tx(
+                        "Rose Quartz",
+                        "Cuarzo Rosa"
+                    ),
+                    page.tx(
+                        "Astral Nebula",
+                        "Nebulosa Astral"
                     )
                 ]
 
